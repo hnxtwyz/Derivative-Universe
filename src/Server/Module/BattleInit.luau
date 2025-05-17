@@ -114,7 +114,7 @@ function BattleInit:_initUnit(unitModel: Model)
     local unitNo = _getNextUnitNo()
 
     -- 模型相关
-    local unitParts = ModelComponent.new(unitModel):getChildParts()
+    local unitParts = ModelComponent:getChildParts(unitModel)
     for _, part in unitParts do
         _findUnitCollection:setObjectTag(part, unitNo)
     end

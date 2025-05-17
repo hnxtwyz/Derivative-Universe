@@ -1,20 +1,10 @@
 local ModelComponent = {}
-ModelComponent.__index = ModelComponent
-
-function ModelComponent.new(model: Model)
-    local self = {}
-    setmetatable(self, ModelComponent)
-
-    self.model = model
-
-    return self
-end
 
 -- ++++++++++++++++++++
 
-function ModelComponent:getChildParts() : { BasePart }
+function ModelComponent:getChildParts(model: Model) : { BasePart }
     local parts = {}
-    for _, child in self.model:GetChildren() do
+    for _, child in model:GetChildren() do
         if child:IsA("BasePart") then
             table.insert(parts, child)
         end
@@ -22,9 +12,9 @@ function ModelComponent:getChildParts() : { BasePart }
     return parts
 end
 
-function ModelComponent:getDescendantParts() : { BasePart }
+function ModelComponent:getDescendantParts(model: Model) : { BasePart }
     local parts = {}
-    for _, descendant in self.model:GetDescendants() do
+    for _, descendant in model:GetDescendants() do
         if descendant:IsA("BasePart") then
             table.insert(parts, descendant)
         end
