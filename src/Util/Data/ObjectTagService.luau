@@ -280,7 +280,7 @@ end
 -- ++++++++++++++++++++
 
 -- 数据拆分，使其可以进行网络传输
-local function dataSplit()
+local function _dataSplit()
     local splitServiceData = {}
 
     for collectionName, collectionData in _serviceData do
@@ -296,7 +296,7 @@ local function dataSplit()
 end
 
 -- 数据还原
-local function dataRevert(splitServiceData)
+local function _dataRevert(splitServiceData)
     local originServiceData = {}
 
     for collectionName, splitCollectionData in splitServiceData do
@@ -313,11 +313,11 @@ end
 
 -- 同步函数
 
-local function serviceSync(method: string, ...: any)
+local function _serviceSync(method: string, ...: any)
     ObjectTagService[method](ObjectTagService, ...)
 end
 
-local function collectionSync(collectionType: string, collectionName: string, method: string, ...: any)
+local function _collectionSync(collectionType: string, collectionName: string, method: string, ...: any)
     local collection
 
     if collectionType == "Sot" then
@@ -333,12 +333,12 @@ end
 if IS_SERVER then
     _serviceData = {}
 
-    _dataReplicateFunction.OnServerInvoke = dataSplit
+    _dataReplicateFunction.OnServerInvoke = _dataSplit
 else
-    _serviceData = dataRevert(_dataReplicateFunction:InvokeServer())
+    _serviceData = _dataRevert(_dataReplicateFunction:InvokeServer())
 
-    _serviceSyncEvent.OnClientEvent:Connect(serviceSync)
-    _collectionSyncEvent.OnClientEvent:Connect(collectionSync)
+    _serviceSyncEvent.OnClientEvent:Connect(_serviceSync)
+    _collectionSyncEvent.OnClientEvent:Connect(_collectionSync)
 end
 
 -- ++++++++++++++++++++

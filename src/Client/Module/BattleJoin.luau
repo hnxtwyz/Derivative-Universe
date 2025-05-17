@@ -60,7 +60,6 @@ end
 function BattleJoin:_initBattleLocal()
     _cameraLock = CameraLock.new(_player.Character, Enum.KeyCode.Tab)
     _cameraLock:activate()
-    -- 缺少生命周期管理
 
     -- 设置R技能触发
     _battleInputActionCollection:addSinglePressInputAction("R", function()

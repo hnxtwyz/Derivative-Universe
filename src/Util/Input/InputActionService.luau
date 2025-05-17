@@ -1,7 +1,6 @@
 local ContextActionService = game:GetService("ContextActionService")
 
 type InputActionCallback = (InputObject) -> ()
-type CollectionStructure = { [string]: boolean }
 
 -- ++++++++++++++++++++
 
@@ -12,7 +11,7 @@ type CollectionStructure = { [string]: boolean }
 local InputActionCollection = {}
 InputActionCollection.__index = InputActionCollection
 
-function InputActionCollection.new(collectionName: string, collectionStructure: CollectionStructure) : table
+function InputActionCollection.new(collectionName: string, collectionStructure)
     local self = {}
     setmetatable(self, InputActionCollection)
     
@@ -200,13 +199,11 @@ local InputActionService = {}
 
 local _inputActionNamesInCollection = {}
 
--- 获取/创建一个输入行为集合
 function InputActionService:getOrCreateInputActionCollection(collectionName: string) : table
     local collectionStructure = self:_getOrCreateCollectionStructure(collectionName)
     return InputActionCollection.new(collectionName, collectionStructure)
 end
 
--- 获取/创建用于记录 集合中输入行为名称 的结构
 function InputActionService:_getOrCreateCollectionStructure(collectionName: string)
     if not _inputActionNamesInCollection[collectionName] then
         _inputActionNamesInCollection[collectionName] = {}

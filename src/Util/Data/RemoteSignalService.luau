@@ -211,22 +211,22 @@ end
 
 -- ++++++++++++++++++++
 
-local function serviceSync(method: string, ...: any)
+local function _serviceSync(method: string, ...: any)
     RemoteSignalService[method](RemoteSignalService, ...)
 end
 
-local function collectionSync(listCollectionName: string, method: string, ...: any)
+local function _collectionSync(listCollectionName: string, method: string, ...: any)
     local listCollection = RemoteSignalService:getOrCreateSignalListCollection(listCollectionName)
     listCollection[method](listCollection, ...)
 end
 
-local function listSync(listCollectionName: string, connectedObject: any, method: string, ...: any)
+local function _listSync(listCollectionName: string, connectedObject: any, method: string, ...: any)
     local listCollection = RemoteSignalService:getOrCreateSignalListCollection(listCollectionName)
     local list = listCollection:getOrCreateSignalList(connectedObject)
     list[method](list, ...)
 end
 
-local function signalSync(listCollectionName: string, connectedObject: any, signalName: string, method: string, ...: any)
+local function _signalSync(listCollectionName: string, connectedObject: any, signalName: string, method: string, ...: any)
     local listCollection = RemoteSignalService:getOrCreateSignalListCollection(listCollectionName)
     local list = listCollection:getOrCreateSignalList(connectedObject)
     local signal = list:getOrCreateSignal(signalName)
@@ -235,10 +235,10 @@ end
 
 -- 设置同步
 if IS_CLIENT then
-    _serviceSyncEvent.OnClientEvent:Connect(serviceSync)
-    _collectionSyncEvent.OnClientEvent:Connect(collectionSync)
-    _listSyncEvent.OnClientEvent:Connect(listSync)
-    _signalSyncEvent.OnClientEvent:Connect(signalSync)
+    _serviceSyncEvent.OnClientEvent:Connect(_serviceSync)
+    _collectionSyncEvent.OnClientEvent:Connect(_collectionSync)
+    _listSyncEvent.OnClientEvent:Connect(_listSync)
+    _signalSyncEvent.OnClientEvent:Connect(_signalSync)
 end
 
 -- ++++++++++++++++++++
