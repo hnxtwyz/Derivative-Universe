@@ -12,9 +12,8 @@ function ActiveToggleMode.new()
 end
 
 function ActiveToggleMode:activate()
-    if not self:_activateTest() then return end
-
     if self._isActive then return end
+    if not self:_activateTest() then return end
     self._isActive = true
 
     if self._isToggled then

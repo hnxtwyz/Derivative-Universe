@@ -25,11 +25,11 @@ local _listSyncEvent
 local _signalSyncEvent
 
 if IS_SERVER then
-    _remotePortCollection = RemotePortService:createRemotePortCollection(REMOTE_PORT_COLLECTION_NAME)
-    _serviceSyncEvent = _remotePortCollection:createRemoteEvent(SERVICE_SYNC_EVENT_NAME)
-    _collectionSyncEvent = _remotePortCollection:createRemoteEvent(COLLECTION_SYNC_EVENT_NAME)
-    _listSyncEvent = _remotePortCollection:createRemoteEvent(LIST_SYNC_EVENT_NAME)
-    _signalSyncEvent = _remotePortCollection:createRemoteEvent(SIGNAL_SYNC_EVENT_NAME)
+    _remotePortCollection = RemotePortService:getOrCreateRemotePortCollection(REMOTE_PORT_COLLECTION_NAME)
+    _serviceSyncEvent = _remotePortCollection:getOrCreateRemoteEvent(SERVICE_SYNC_EVENT_NAME)
+    _collectionSyncEvent = _remotePortCollection:getOrCreateRemoteEvent(COLLECTION_SYNC_EVENT_NAME)
+    _listSyncEvent = _remotePortCollection:getOrCreateRemoteEvent(LIST_SYNC_EVENT_NAME)
+    _signalSyncEvent = _remotePortCollection:getOrCreateRemoteEvent(SIGNAL_SYNC_EVENT_NAME)
 else
     _remotePortCollection = RemotePortService:waitRemotePortCollection(REMOTE_PORT_COLLECTION_NAME)
     _serviceSyncEvent = _remotePortCollection:waitRemotePort(SERVICE_SYNC_EVENT_NAME)

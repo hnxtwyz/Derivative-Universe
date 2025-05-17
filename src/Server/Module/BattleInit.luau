@@ -17,9 +17,9 @@ local BattleInit = {}
 
 -- ++++++++++++++++++++
 
-local _battlePortCollection = RemotePortService:createRemotePortCollection("Battle")
-local _battleJoinFunction = _battlePortCollection:createRemoteFunction("BattleJoinFunction")
-local _championActionEvent = _battlePortCollection:createRemoteEvent("ChampionActionEvent")
+local _battlePortCollection = RemotePortService:getOrCreateRemotePortCollection("Battle")
+local _battleJoinFunction = _battlePortCollection:getOrCreateRemoteFunction("BattleJoinFunction")
+local _championActionEvent = _battlePortCollection:getOrCreateRemoteEvent("ChampionActionEvent")
 
 local _findUnitCollection = ObjectTagService:getOrCreateSotCollection("Battle1_FindUnitCollection")
 

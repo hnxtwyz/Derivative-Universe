@@ -18,18 +18,21 @@ function RemotePortCollection.new(collectionFolder)
     return self
 end
 
-function RemotePortCollection:createRemoteEvent(portName: string)
-    return self:_createRemotePort(portName, "RemoteEvent")
+function RemotePortCollection:getOrCreateRemoteEvent(portName: string)
+    return self:_getOrCreateRemotePort(portName, "RemoteEvent")
 end
 
-function RemotePortCollection:createRemoteFunction(portName: string)
-    return self:_createRemotePort(portName, "RemoteFunction")
+function RemotePortCollection:getOrCreateRemoteFunction(portName: string)
+    return self:_getOrCreateRemotePort(portName, "RemoteFunction")
 end
 
-function RemotePortCollection:_createRemotePort(portName: string, portType: string)
-    local remotePort = Instance.new(portType)
-    remotePort.Name = portName
-    remotePort.Parent = self._collectionFolder
+function RemotePortCollection:_getOrCreateRemotePort(portName: string, portType: string)
+    local remotePort = self._collectionFolder:FindFirstChild(portName)
+    if not remotePort then
+        remotePort = Instance.new(portType)
+        remotePort.Name = portName
+        remotePort.Parent = self._collectionFolder
+    end
     return remotePort
 end
 
@@ -55,10 +58,13 @@ else
     _remoteFolder = game.ReplicatedStorage:WaitForChild("Remote")
 end
 
-function RemotePortService:createRemotePortCollection(collectionName: string)
-    local collectionFolder = Instance.new("Folder")
-    collectionFolder.Name = collectionName
-    collectionFolder.Parent = _remoteFolder
+function RemotePortService:getOrCreateRemotePortCollection(collectionName: string)
+    local collectionFolder = _remoteFolder:FindFirstChild(collectionName)
+    if not collectionFolder then
+        collectionFolder = Instance.new("Folder")
+        collectionFolder.Name = collectionName
+        collectionFolder.Parent = _remoteFolder
+    end
     return RemotePortCollection.new(collectionFolder)
 end
 

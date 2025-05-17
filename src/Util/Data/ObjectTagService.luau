@@ -23,10 +23,10 @@ local _collectionSyncEvent
 
 -- 服务器创建，客户端等待
 if IS_SERVER then
-    _remotePortCollection = RemotePortService:createRemotePortCollection(REMOTE_PORT_COLLECTION_NAME)
-    _dataReplicateFunction = _remotePortCollection:createRemoteFunction(DATA_REPLICATE_FUNCTION_NAME)
-    _serviceSyncEvent = _remotePortCollection:createRemoteEvent(SERVICE_SYNC_EVENT_NAME)
-    _collectionSyncEvent = _remotePortCollection:createRemoteEvent(COLLECTION_SYNC_EVENT_NAME)
+    _remotePortCollection = RemotePortService:getOrCreateRemotePortCollection(REMOTE_PORT_COLLECTION_NAME)
+    _dataReplicateFunction = _remotePortCollection:getOrCreateRemoteFunction(DATA_REPLICATE_FUNCTION_NAME)
+    _serviceSyncEvent = _remotePortCollection:getOrCreateRemoteEvent(SERVICE_SYNC_EVENT_NAME)
+    _collectionSyncEvent = _remotePortCollection:getOrCreateRemoteEvent(COLLECTION_SYNC_EVENT_NAME)
 else
     _remotePortCollection = RemotePortService:waitRemotePortCollection(REMOTE_PORT_COLLECTION_NAME)
     _dataReplicateFunction = _remotePortCollection:waitRemotePort(DATA_REPLICATE_FUNCTION_NAME)
