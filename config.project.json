@@ -1,0 +1,58 @@
+{
+    "name": "Derivative Universe",
+
+    "tree": {
+        "$className": "DataModel",
+        "$ignoreUnknownInstances": true,
+
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "$ignoreUnknownInstances": true,
+
+            "Library": {
+                "$className": "Folder",
+                "$path": "Library"
+            },
+
+            "ClientModule": {
+                "$className": "Folder",
+                "$path": "src/Client/Module"
+            },
+
+            "SharedModule": {
+                "$className": "Folder",
+                "$path": "src/Shared"
+            },
+
+            "Util": {
+                "$className": "Folder",
+                "$path": "src/Util"
+            }
+        },
+
+        "ServerScriptService": {
+            "$className": "ServerScriptService",
+            "$ignoreUnknownInstances": true,
+
+            "ServerModule": {
+                "$className": "Folder",
+                "$path": "src/Server/Module"
+            },
+
+            "ServerTest": {
+                "$className": "Folder",
+                "$path": "src/Server/Test"
+            }
+        },
+
+        "StarterPlayer": {
+            "$className": "StarterPlayer",
+            "$ignoreUnknownInstances": true,
+
+            "StarterPlayerScripts": {
+                "$className": "StarterPlayerScripts",
+                "$path": "src/Client/Test"
+            }
+        }
+    }
+}
