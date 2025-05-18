@@ -65,6 +65,11 @@ function BattleJoin:_initBattleLocal()
     _battleInputActionCollection:addSinglePressInputAction("R", function()
         _championActionEvent:FireServer("R")
     end, Enum.KeyCode.R)
+
+    -- 设置F技能触发
+    _battleInputActionCollection:addSinglePressInputAction("F", function()
+        _championActionEvent:FireServer("F")
+    end, Enum.KeyCode.F)
 end
 
 -- ++++++++++++++++++++

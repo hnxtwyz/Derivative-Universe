@@ -9,6 +9,8 @@ local RemoteSignalService = require(game.ReplicatedStorage.Util.Data.RemoteSigna
 local CharacterLoader = require(game.ReplicatedStorage.Util.Character.CharacterLoader)
 local ModelComponent = require(game.ReplicatedStorage.Util.Model.ModelComponent)
 
+local CharacterController = require(game.ReplicatedStorage.Util.Character.CharacterController)
+
 local BattleInit = {}
 
 -- ++++++++++++++++++++
@@ -31,6 +33,8 @@ local _unitSignalListCollection = RemoteSignalService:getOrCreateSignalListColle
 
 local _unitOperation = {}
 
+local _playerUnit = {}
+
 -- ++++++++++++++++++++
 
 -- 战斗初始化
@@ -39,54 +43,20 @@ local _unitOperation = {}
 
 function BattleInit:init()
     self:_listenPlayerJoin()
-    self:_listenPlayerChampionAction()
     self:_addRobot()
+    self:_listenPlayerChampionAction()
 end
 
 function BattleInit:_listenPlayerJoin()
     _battleJoinFunction.OnServerInvoke = function(player, championNo)
         local playerChampionModel = workspace.C0:Clone()
-        self:_initUnit(playerChampionModel)
+        local unitNo = self:_initUnit(playerChampionModel)
         CharacterLoader:setPlayerCharacter(player, playerChampionModel)
+        _playerUnit[player] = unitNo
 
         -- 返回加入成功信息
         return true, "Successfully joined the battle!"
     end
-end
-
-function BattleInit:_listenPlayerChampionAction()
-    _championActionEvent.OnServerEvent:Connect(function(player, actionName)
-        if actionName == "R" then
-            -- 释放一个火球
-            local fireball = Instance.new("Part")
-            fireball.Name = "Fireball"
-            fireball.Parent = workspace
-            fireball.Shape = Enum.PartType.Ball
-            fireball.Size = Vector3.new(1, 1, 1)
-            fireball.Position = player.Character.HumanoidRootPart.Position + player.Character.HumanoidRootPart.CFrame.LookVector * 10
-            fireball.Color = Color3.fromRGB(255, 0, 0)
-            fireball.Material = Enum.Material.Neon
-            fireball.Anchored = true
-            fireball.CanCollide = false
-            fireball.CanTouch = true
-            fireball.CanQuery = true
-
-            Debris:AddItem(fireball, 5)
-
-            local hitRecord = {}
-            local unitRecord = {}
-            fireball.Touched:Connect(function(hit)
-                if not hitRecord[hit] then
-                    hitRecord[hit] = false -- 暂时取消重复检测
-                    local attackingUnitNo = _findUnitCollection:getObjectTag(hit)
-                    if attackingUnitNo and not unitRecord[attackingUnitNo] then
-                        unitRecord[attackingUnitNo] = false  -- 暂时取消重复检测
-                        _unitOperation[attackingUnitNo].normalAttack(10)
-                    end
-                end
-            end)
-        end
-    end)
 end
 
 function BattleInit:_addRobot()
@@ -164,6 +134,69 @@ function BattleInit:_initUnit(unitModel: Model)
         unitAttributeList:setProperty("health", newHealth)
         healthLostSignal:Fire(val)
     end
+
+    local characterController = CharacterController.new(unitModel)
+    local isPause = false
+    local cachedWalkSpeed = characterController:getWalkSpeed()
+    local cachedJumpPower = characterController:getJumpPower()
+
+    _unitOperation[unitNo].togglePause = function()
+        if isPause then
+            characterController:allowMovement(cachedWalkSpeed)
+            characterController:allowJump(cachedJumpPower)
+        else
+            characterController:restrictMovement()
+            characterController:restrictJump()
+        end
+        isPause = not isPause
+    end
+
+    return unitNo
+end
+
+-- ++++++++++++++++++++
+
+-- 监听动作和技能
+
+-- ++++++++++++++++++++
+
+function BattleInit:_listenPlayerChampionAction()
+    _championActionEvent.OnServerEvent:Connect(function(player, actionName)
+        if actionName == "R" then
+            -- 释放一个火球
+            local fireball = Instance.new("Part")
+            fireball.Name = "Fireball"
+            fireball.Parent = workspace
+            fireball.Shape = Enum.PartType.Ball
+            fireball.Size = Vector3.new(1, 1, 1)
+            fireball.Position = player.Character.HumanoidRootPart.Position + player.Character.HumanoidRootPart.CFrame.LookVector * 10
+            fireball.Color = Color3.fromRGB(255, 0, 0)
+            fireball.Material = Enum.Material.Neon
+            fireball.Anchored = true
+            fireball.CanCollide = false
+            fireball.CanTouch = true
+            fireball.CanQuery = true
+
+            Debris:AddItem(fireball, 5)
+
+            local hitRecord = {}
+            local unitRecord = {}
+            fireball.Touched:Connect(function(hit)
+                if not hitRecord[hit] then
+                    hitRecord[hit] = false -- 暂时取消重复检测
+                    local attackingUnitNo = _findUnitCollection:getObjectTag(hit)
+                    if attackingUnitNo and not unitRecord[attackingUnitNo] then
+                        unitRecord[attackingUnitNo] = false  -- 暂时取消重复检测
+                        _unitOperation[attackingUnitNo].normalAttack(10)
+                    end
+                end
+            end)
+        elseif actionName == "F" then
+            print("技能F触发！")
+            local playerUnitNo = _playerUnit[player]
+            _unitOperation[playerUnitNo].togglePause()
+        end
+    end)
 end
 
 return BattleInit
