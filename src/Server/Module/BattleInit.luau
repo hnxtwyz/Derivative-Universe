@@ -27,7 +27,7 @@ end
 function BattleInit:_listenPlayerJoin()
     _battleJoinFunction.OnServerInvoke = function(player, championNo)
         local playerChampionModel = workspace.C0:Clone()
-        local unitNo = battle:addUnit(playerChampionModel)
+        local unitNo = battle:addUnit(playerChampionModel, true)
         CharacterLoader:setPlayerCharacter(player, playerChampionModel)
         _playerUnitNoCollection[player] = unitNo
 
@@ -55,6 +55,8 @@ function BattleInit:_listenPlayerChampionAction()
                 battle.unitOperationCollection[unitNo].R()
             elseif actionName == "F" then
                 battle.unitOperationCollection[unitNo].F()
+            elseif actionName == "A" then
+                battle.unitOperationCollection[unitNo].A()
             end
         end
     end)

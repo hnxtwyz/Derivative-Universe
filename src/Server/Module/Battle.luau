@@ -29,7 +29,7 @@ function Battle:_getNextUnitNo() : number
     return self._unitCount
 end
 
-function Battle:addUnit(unitModel: Model) : number
+function Battle:addUnit(unitModel: Model, isPlayer: boolean?) : number
     local unitNo = self:_getNextUnitNo()
     self.unitOperationCollection[unitNo] = {}
     local context = {
@@ -41,6 +41,9 @@ function Battle:addUnit(unitModel: Model) : number
     }
     local unitInitializer = UnitInitializer.new(unitNo, unitModel, context)
     unitInitializer:initUnit()
+    if isPlayer then
+        unitInitializer:initSkillA()
+    end
     return unitNo
 end
 

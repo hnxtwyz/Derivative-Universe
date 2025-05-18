@@ -128,5 +128,19 @@ function UnitInitializer:initUnit()
     end
 end
 
+function UnitInitializer:initSkillA()
+    local animator = self._unitModel.Humanoid.Animator
+
+    local A1 = Instance.new("Animation")
+    A1.AnimationId = "rbxassetid://98920670395451"
+    local A1Track = animator:LoadAnimation(A1)
+    A1Track.Priority = Enum.AnimationPriority.Action
+
+    self._unitOperation.A = function()
+        print("技能A触发！")
+        A1Track:Play()
+    end
+end
+
 return UnitInitializer
 
