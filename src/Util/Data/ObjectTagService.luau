@@ -74,7 +74,9 @@ function SotCollection:setObjectTag(object: any, tag: any)
     self._collectionData.objectToTag[object] = tag
     if tag then
         -- 获取/创建新标签的物体列表
-        self._collectionData.tagToObjects[tag] = self._collectionData.tagToObjects[tag] or {}
+        if not self._collectionData.tagToObjects[tag] then
+            self._collectionData.tagToObjects[tag] = {}
+        end
         local objects = self._collectionData.tagToObjects[tag]
         table.insert(objects, object)
     end
@@ -117,8 +119,12 @@ end
 
 function MotCollection:addObjectTag(object: any, tag: any)
     -- 创建/获取对应标签/物体列表
-    self._collectionData.objectToTags[object] = self._collectionData.objectToTags[object] or {}
-    self._collectionData.tagToObjects[tag] = self._collectionData.tagToObjects[tag] or {}
+    if not self._collectionData.objectToTags[object] then
+        self._collectionData.objectToTags[object] = {}
+    end
+    if not self._collectionData.tagToObjects[tag] then
+        self._collectionData.tagToObjects[tag] = {}
+    end
     local objectToTags = self._collectionData.objectToTags
     local tagToObjects = self._collectionData.tagToObjects
 

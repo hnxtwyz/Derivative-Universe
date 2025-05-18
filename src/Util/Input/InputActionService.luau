@@ -37,7 +37,7 @@ function InputActionCollection:addSinglePressInputAction(inputActionName: string
         end
     end
     
-    self:_bindInputAction(inputActionName, inputActionHandler, ...)
+    self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- 释放模式
@@ -48,7 +48,7 @@ function InputActionCollection:addReleaseInputAction(inputActionName: string, ca
         end
     end
     
-    self:_bindInputAction(inputActionName, inputActionHandler, ...)
+    self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- 持续/变化模式
@@ -59,7 +59,7 @@ function InputActionCollection:addChangeInputAction(inputActionName: string, cal
         end
     end
     
-    self:_bindInputAction(inputActionName, inputActionHandler, ...)
+    self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- 按住间隔模式
@@ -93,7 +93,7 @@ function InputActionCollection:addHoldInputAction(inputActionName: string, callb
         end
     end
     
-    self:_bindInputAction(inputActionName, inputActionHandler, ...)
+    self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- 按下抬起模式
@@ -111,7 +111,7 @@ function InputActionCollection:addLongPressInputAction(
         end
     end
     
-    self:_bindInputAction(inputActionName, inputActionHandler, ...)
+    self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- 双按模式
@@ -141,7 +141,7 @@ function InputActionCollection:addDoublePressInputAction(inputActionName: string
         end
     end
     
-    self:_bindInputAction(inputActionName, inputActionHandler, ...)
+    self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- ++++++++++++++++++++
@@ -150,39 +150,25 @@ end
 
 -- ++++++++++++++++++++
 
-function InputActionCollection:_bindInputAction(inputActionName: string, inputActionHandler, ...: Enum.KeyCode | Enum.UserInputType)
-    self:_storeInputActionName(inputActionName)
+function InputActionCollection:_addInputAction(inputActionName: string, inputActionHandler, ...: Enum.KeyCode | Enum.UserInputType)
+    self._collectionStructure[inputActionName] = true
     ContextActionService:BindAction(self:_getInputActionFullName(inputActionName), inputActionHandler, false, ...)
 end
 
 function InputActionCollection:removeInputAction(inputActionName: string)
     ContextActionService:UnbindAction(self:_getInputActionFullName(inputActionName))
-    self:_deleteInputActionName(inputActionName)
-end
-
-function InputActionCollection:removeAllInputActions()
-    for inputActionName, _ in self._collectionStructure do
-        ContextActionService:UnbindAction(self:_getInputActionFullName(inputActionName))
-    end
-    self:_deleteAllInputActionNames()
-end
-
--- ++++++++++++++++++++
-
--- 名称记录与处理
-
--- ++++++++++++++++++++
-
-function InputActionCollection:_storeInputActionName(inputActionName: string)
-    self._collectionStructure[inputActionName] = true
-end
-
-function InputActionCollection:_deleteInputActionName(inputActionName: string)
     self._collectionStructure[inputActionName] = nil
 end
 
-function InputActionCollection:_deleteAllInputActionNames()
+function InputActionCollection:removeAllInputActions()
+    self:_unbindAllInputActions()
     table.clear(self._collectionStructure)
+end
+
+function InputActionCollection:_unbindAllInputActions()
+    for inputActionName, _ in self._collectionStructure do
+        ContextActionService:UnbindAction(self:_getInputActionFullName(inputActionName))
+    end
 end
 
 function InputActionCollection:_getInputActionFullName(inputActionName: string) : string
@@ -197,28 +183,24 @@ end
 
 local InputActionService = {}
 
-local _inputActionNamesInCollection = {}
+local _inputActionNamesStore = {}
 
 function InputActionService:getOrCreateInputActionCollection(collectionName: string) : table
-    local collectionStructure = self:_getOrCreateCollectionStructure(collectionName)
+    local collectionStructure = self:_getOrCreateInputActionCollectionStructure(collectionName)
     return InputActionCollection.new(collectionName, collectionStructure)
 end
 
-function InputActionService:_getOrCreateCollectionStructure(collectionName: string)
-    if not _inputActionNamesInCollection[collectionName] then
-        _inputActionNamesInCollection[collectionName] = {}
+function InputActionService:_getOrCreateInputActionCollectionStructure(collectionName: string)
+    if not _inputActionNamesStore[collectionName] then
+        _inputActionNamesStore[collectionName] = {}
     end
-    return _inputActionNamesInCollection[collectionName]
+    return _inputActionNamesStore[collectionName]
 end
 
 function InputActionService:removeInputActionCollection(collectionName: string)
     local inputActionCollection = self:getOrCreateInputActionCollection(collectionName)
-    inputActionCollection:removeAllInputActions()
-    self:removeCollectionStructure(collectionName)
-end
-
-function InputActionService:removeCollectionStructure(collectionName: string)
-    _inputActionNamesInCollection[collectionName] = nil
+    inputActionCollection:_unbindAllInputActions()
+    _inputActionNamesStore[collectionName] = nil
 end
 
 -- ++++++++++++++++++++
