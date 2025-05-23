@@ -19,13 +19,21 @@ function DataProcessing:revertDictionary(kvArray)
     return dictionary
 end
 
+-- 添加数组元素
+function DataProcessing:addArrayElement(array, element) : boolean
+    if not table.find(array, element) then
+        table.insert(array, element)
+        return true
+    end
+    return false
+end
+
 -- 移除数组元素
 function DataProcessing:removeArrayElement(array, element) : boolean
-    for i, v in array do
-        if v == element then
-            table.remove(array, i)
-            return true
-        end
+    local index = table.find(array, element)
+    if index then
+        table.remove(array, index)
+        return true
     end
     return false
 end

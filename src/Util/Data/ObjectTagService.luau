@@ -78,7 +78,7 @@ function SotCollection:setObjectTag(object: any, tag: any)
             self._collectionData.tagToObjects[tag] = {}
         end
         local objects = self._collectionData.tagToObjects[tag]
-        table.insert(objects, object)
+        DataProcessing:addArrayElement(objects, object)
     end
     
     self:_syncToClient("setObjectTag", object, tag)
@@ -129,13 +129,9 @@ function MotCollection:addObjectTag(object: any, tag: any)
     local tagToObjects = self._collectionData.tagToObjects
 
     -- 标签关联物体
-    if not table.find(objectToTags[object], tag) then
-        table.insert(objectToTags[object], tag)
-    end
+    DataProcessing:addArrayElement(objectToTags[object], tag)
     -- 物体关联标签
-    if not table.find(tagToObjects[tag], object) then
-        table.insert(tagToObjects[tag], object)
-    end
+    DataProcessing:addArrayElement(tagToObjects[tag], object)
 
     self:_syncToClient("addObjectTag", object, tag)
 end
@@ -170,17 +166,13 @@ end
 -- 得到并集
 function MotCollection:getObjectsInTags(tags: { any }) : { any }
     local result = {}
-    local seen = {}
 
     for _, tag in tags do
         local objects = self._collectionData.tagToObjects[tag]
         if objects then
-            -- 迭代每个标签物体列表中的物体，并记录唯一性
+            -- 迭代每个标签物体列表中的物体，将其唯一保存
             for _, object in objects do
-                if not seen[object] then
-                    seen[object] = true
-                    table.insert(result, object)
-                end
+                DataProcessing:addArrayElement(result, object)
             end
         end
     end
@@ -218,7 +210,7 @@ function MotCollection:getObjectsWithTags(tags: { any }) : { any }
 
         -- 满足条件时，插入结果
         if hasAllTags then
-            table.insert(result, object)
+            DataProcessing:addArrayElement(result, object)
         end
     end
 
