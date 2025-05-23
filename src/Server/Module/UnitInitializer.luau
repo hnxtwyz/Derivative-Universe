@@ -21,6 +21,8 @@ function UnitInitializer.new(unitNo: number, unitModel: Model, context)
     self._unitAttributeList = context.unitAttributeList
     self._unitSignalList = context.unitSignalList
 
+    self._battleObjectHandler = context.battleObjectHandler
+
     return self
 end
 
@@ -106,20 +108,7 @@ function UnitInitializer:initUnit()
         fireball.CanTouch = true
         fireball.CanQuery = true
 
-        Debris:AddItem(fireball, 5)
-
-        local hitRecord = {}
-        local unitRecord = {}
-        fireball.Touched:Connect(function(hit)
-            if not hitRecord[hit] then
-                hitRecord[hit] = false -- 暂时取消重复检测
-                local attackingUnitNo = self._findUnitCollection:getObjectTag(hit)
-                if attackingUnitNo and not unitRecord[attackingUnitNo] then
-                    unitRecord[attackingUnitNo] = false  -- 暂时取消重复检测
-                    self._unitOperationCollection[attackingUnitNo].normalAttack(10)
-                end
-            end
-        end)
+        self._battleObjectHandler:handleObject(fireball, self._unitNo, 5, 20)
     end
 
     self._unitOperation.F = function()
@@ -139,6 +128,18 @@ function UnitInitializer:initSkillA()
     self._unitOperation.A = function()
         print("技能A触发！")
         A1Track:Play()
+        local attackBox = Instance.new("Part")
+        attackBox.Name = "AttackBox"
+        attackBox.Parent = workspace
+        attackBox.Size = Vector3.new(5, 5, 5)
+        attackBox.Anchored = true
+        attackBox.CanCollide = false
+        attackBox.CanTouch = true
+        attackBox.CanQuery = true
+        attackBox.Transparency = 0.7
+        attackBox.CFrame = self._unitModel.HumanoidRootPart.CFrame + self._unitModel.HumanoidRootPart.CFrame.LookVector * 7
+
+        self._battleObjectHandler:handleObject(attackBox, self._unitNo, 0.3, 20)
     end
 end
 

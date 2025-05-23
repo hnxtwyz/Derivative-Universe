@@ -3,6 +3,7 @@ local PropertyListService = require(game.ReplicatedStorage.Util.Data.PropertyLis
 local RemoteSignalService = require(game.ReplicatedStorage.Util.Data.RemoteSignalService)
 
 local UnitInitializer = require(script.Parent.UnitInitializer)
+local BattleObjectHandler = require(script.Parent.BattleObjectHandler)
 
 local Battle = {}
 Battle.__index = Battle
@@ -21,6 +22,12 @@ function Battle.new(battleNo: number)
     self._unitAttributeListCollection = PropertyListService:getOrCreatePropertyListCollection("Battle" .. battleNo .. "_UnitAttributeListCollection")
     self._unitSignalListCollection = RemoteSignalService:getOrCreateSignalListCollection("Battle" .. battleNo .. "_UnitSignalListCollection")
 
+    self._battleObjectHandler = BattleObjectHandler.new({
+        findUnitCollection = self._findUnitCollection,
+        unitTeamCollection = self._unitTeamCollection,
+        unitOperationCollection = self.unitOperationCollection,
+    })
+
     return self
 end
 
@@ -38,6 +45,7 @@ function Battle:addUnit(unitModel: Model, isPlayer: boolean?) : number
         unitTeamCollection = self._unitTeamCollection,
         unitAttributeList = self._unitAttributeListCollection:getOrCreatePropertyList(unitNo),
         unitSignalList = self._unitSignalListCollection:getOrCreateSignalList(unitNo),
+        battleObjectHandler = self._battleObjectHandler,
     }
     local unitInitializer = UnitInitializer.new(unitNo, unitModel, context)
     unitInitializer:initUnit()
