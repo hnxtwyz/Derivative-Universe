@@ -14,41 +14,27 @@ function Battle.new(battleNo: number)
 
     self.unitOperationCollection = {}
 
-    self._battleNo = battleNo
-    self._unitCount = 0
+    self.battleNo = battleNo
+    self.unitCount = 0
 
-    self._findUnitCollection = ObjectTagService:getOrCreateSotCollection("Battle" .. battleNo .. "_FindUnitCollection")
-    self._unitTeamCollection = ObjectTagService:getOrCreateSotCollection("Battle" .. battleNo .. "_UnitTeamCollection")
-    self._unitAttributeListCollection = PropertyListService:getOrCreatePropertyListCollection("Battle" .. battleNo .. "_UnitAttributeListCollection")
-    self._unitSignalListCollection = RemoteSignalService:getOrCreateSignalListCollection("Battle" .. battleNo .. "_UnitSignalListCollection")
+    self.findUnitCollection = ObjectTagService:getOrCreateSotCollection("Battle" .. battleNo .. "_FindUnitCollection")
+    self.unitTeamCollection = ObjectTagService:getOrCreateSotCollection("Battle" .. battleNo .. "_UnitTeamCollection")
+    self.unitAttributeListCollection = PropertyListService:getOrCreatePropertyListCollection("Battle" .. battleNo .. "_UnitAttributeListCollection")
+    self.unitSignalListCollection = RemoteSignalService:getOrCreateSignalListCollection("Battle" .. battleNo .. "_UnitSignalListCollection")
 
-    self._battleObjectHandler = BattleObjectHandler.new({
-        findUnitCollection = self._findUnitCollection,
-        unitTeamCollection = self._unitTeamCollection,
-        unitOperationCollection = self.unitOperationCollection,
-    })
+    self.battleObjectHandler = BattleObjectHandler.new(self)
 
     return self
 end
 
-function Battle:_getNextUnitNo() : number
-    self._unitCount += 1
-    return self._unitCount
+function Battle:getNextUnitNo() : number
+    self.unitCount += 1
+    return self.unitCount
 end
 
 function Battle:addUnit(unitModel: Model, isPlayer: boolean?) : number
-    local unitNo = self:_getNextUnitNo()
-    self.unitOperationCollection[unitNo] = {}
-    local context = {
-        unitOperationCollection = self.unitOperationCollection,
-        findUnitCollection = self._findUnitCollection,
-        unitTeamCollection = self._unitTeamCollection,
-        unitAttributeList = self._unitAttributeListCollection:getOrCreatePropertyList(unitNo),
-        unitSignalList = self._unitSignalListCollection:getOrCreateSignalList(unitNo),
-        battleObjectHandler = self._battleObjectHandler,
-    }
-    local unitInitializer = UnitInitializer.new(unitNo, unitModel, context)
-    unitInitializer:initUnit()
+    local unitInitializer = UnitInitializer.new(unitModel, self)
+    local unitNo = unitInitializer:initUnit()
     if isPlayer then
         unitInitializer:initSkillA()
     end

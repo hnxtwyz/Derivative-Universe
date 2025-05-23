@@ -1,42 +1,42 @@
-local Debris = game:GetService("Debris")
-
 local ModelComponent = require(game.ReplicatedStorage.Util.Model.ModelComponent)
 local CharacterController = require(game.ReplicatedStorage.Util.Character.CharacterController)
 
 local UnitInitializer = {}
 UnitInitializer.__index = UnitInitializer
 
-function UnitInitializer.new(unitNo: number, unitModel: Model, context)
+function UnitInitializer.new(unitModel: Model, battle)
     local self = {}
     setmetatable(self, UnitInitializer)
 
-    self._unitNo = unitNo
     self._unitModel = unitModel
+    self._battle = battle
 
-    self._unitOperationCollection = context.unitOperationCollection
-    self._unitOperation = context.unitOperationCollection[unitNo]
+    self._unitNo = nil
+    self._unitOperation = nil
 
-    self._findUnitCollection = context.findUnitCollection
-    self._unitTeamCollection = context.unitTeamCollection
-    self._unitAttributeList = context.unitAttributeList
-    self._unitSignalList = context.unitSignalList
-
-    self._battleObjectHandler = context.battleObjectHandler
+    self._unitAttributeList = nil
+    self._unitSignalList = nil
 
     return self
 end
 
 local DEFAULT_TEAM_NAME = "Default"
 
-function UnitInitializer:initUnit()
+function UnitInitializer:initUnit() : number
+    -- 初始化属性
+    self._unitNo = self._battle:getNextUnitNo()
+
+    self._unitAttributeList = self._battle.unitAttributeListCollection:getOrCreatePropertyList(self._unitNo)
+    self._unitSignalList = self._battle.unitSignalListCollection:getOrCreateSignalList(self._unitNo)
+
     -- 模型相关
     local unitParts = ModelComponent:getChildParts(self._unitModel)
     for _, part in unitParts do
-        self._findUnitCollection:setObjectTag(part, self._unitNo)
+        self._battle.findUnitCollection:setObjectTag(part, self._unitNo)
     end
     
     -- 队伍相关
-    self._unitTeamCollection:setObjectTag(self._unitNo, DEFAULT_TEAM_NAME)
+    self._battle.unitTeamCollection:setObjectTag(self._unitNo, DEFAULT_TEAM_NAME)
 
     -- 属性设置
     self._unitAttributeList:setProperties({
@@ -71,7 +71,10 @@ function UnitInitializer:initUnit()
         end
     end)
 
-    -- 单位操作相关
+    -- 初始化操作
+    self._battle.unitOperationCollection[self._unitNo] = {}
+    self._unitOperation = self._battle.unitOperationCollection[self._unitNo]
+    
     self._unitOperation.normalAttack = function(val: number)
         local currentHealth = self._unitAttributeList:getProperty("health")
         local newHealth = math.clamp(currentHealth - val, 0, 100)
@@ -110,13 +113,15 @@ function UnitInitializer:initUnit()
         fireball.CanTouch = true
         fireball.CanQuery = true
 
-        self._battleObjectHandler:handleObject(fireball, self._unitNo, 5, 20)
+        self._battle.battleObjectHandler:handleObject(fireball, self._unitNo, 5, 20)
     end
 
     self._unitOperation.F = function()
         print("技能F触发！")
         self._unitOperation.togglePause()
     end
+
+    return self._unitNo
 end
 
 function UnitInitializer:initSkillA()
@@ -141,7 +146,7 @@ function UnitInitializer:initSkillA()
         attackBox.Transparency = 0.7
         attackBox.CFrame = self._unitModel.HumanoidRootPart.CFrame + self._unitModel.HumanoidRootPart.CFrame.LookVector * 7
 
-        self._battleObjectHandler:handleObject(attackBox, self._unitNo, 0.3, 20)
+        self._battle.battleObjectHandler:handleObject(attackBox, self._unitNo, 0.3, 20)
     end
 end
 
