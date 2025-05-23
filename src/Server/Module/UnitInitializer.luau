@@ -51,7 +51,9 @@ function UnitInitializer:initUnit()
 
     healthLostSignal:Connect(function(val)
         local currentHealth = self._unitAttributeList:getProperty("health")
-        if currentHealth <= 0 then
+        if currentHealth > 0 then
+            self._unitModel.Humanoid.Health = currentHealth
+        else
             diedSignal:Fire()
         end
     end)
