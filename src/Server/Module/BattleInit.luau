@@ -57,6 +57,12 @@ function BattleInit:_listenPlayerChampionAction()
                 battle.unitOperationCollection[unitNo].F()
             elseif actionName == "A" then
                 battle.unitOperationCollection[unitNo].A()
+            elseif actionName == "E1" then
+                battle.unitOperationCollection[unitNo].E1()
+            elseif actionName == "E2" then
+                battle.unitOperationCollection[unitNo].E2()
+            elseif actionName == "Q" then
+                battle.unitOperationCollection[unitNo].Q()
             end
         end
     end)

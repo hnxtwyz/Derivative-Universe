@@ -36,7 +36,7 @@ function Battle:addUnit(unitModel: Model, isPlayer: boolean?) : number
     local unitInitializer = UnitInitializer.new(unitModel, self)
     local unitNo = unitInitializer:initUnit()
     if isPlayer then
-        unitInitializer:initSkillA()
+        unitInitializer:initSkill()
     end
     return unitNo
 end

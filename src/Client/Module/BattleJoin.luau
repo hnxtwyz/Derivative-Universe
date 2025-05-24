@@ -75,6 +75,18 @@ function BattleJoin:_initBattleLocal()
     _battleInputActionCollection:addHoldInputAction("A", function()
         _championActionEvent:FireServer("A")
     end, 0.5, Enum.UserInputType.MouseButton1)
+
+    -- 设置E技能触发
+    _battleInputActionCollection:addLongPressInputAction("E", function()
+        _championActionEvent:FireServer("E1")
+    end, function()
+        _championActionEvent:FireServer("E2")
+    end, Enum.KeyCode.E)
+
+    -- 设置Q技能触发
+    _battleInputActionCollection:addSinglePressInputAction("Q", function()
+        _championActionEvent:FireServer("Q")
+    end, Enum.KeyCode.Q)
 end
 
 -- ++++++++++++++++++++
