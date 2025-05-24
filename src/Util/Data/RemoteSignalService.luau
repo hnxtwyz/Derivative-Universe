@@ -75,6 +75,10 @@ function RemoteSignal:Connect(callback: (...any) -> ())
     return self._realSignal:Connect(callback)
 end
 
+function RemoteSignal:Once(callback: (...any) -> ())
+    return self._realSignal:Once(callback)
+end
+
 function RemoteSignal:Wait()
     return self._realSignal:Wait()
 end
