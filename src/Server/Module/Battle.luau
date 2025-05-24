@@ -32,6 +32,14 @@ function Battle:getNextUnitNo() : number
     return self.unitCount
 end
 
+Battle.DEFAULT_TEAM_NAME = "Default"
+
+function Battle:isEnemy(unitNo1: number, unitNo2: number) : boolean
+    local team1 = self.unitTeamCollection:getObjectTag(unitNo1)
+    local team2 = self.unitTeamCollection:getObjectTag(unitNo2)
+    return team1 ~= team2 or team1 == Battle.DEFAULT_TEAM_NAME and unitNo1 ~= unitNo2
+end
+
 function Battle:addUnit(unitModel: Model, isPlayer: boolean?) : number
     local unitInitializer = UnitInitializer.new(unitModel, self)
     local unitNo = unitInitializer:initUnit()

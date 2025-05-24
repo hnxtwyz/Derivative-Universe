@@ -21,7 +21,7 @@ function BattleObjectHandler:handleObject(object: Instance, unitNo: number, life
         if not hitRecord[hit] then
             hitRecord[hit] = true
             local attackingUnitNo = self._battle.findUnitCollection:getObjectTag(hit)
-            if attackingUnitNo and not unitRecord[attackingUnitNo] then
+            if attackingUnitNo and self._battle:isEnemy(unitNo, attackingUnitNo) and not unitRecord[attackingUnitNo] then
                 unitRecord[attackingUnitNo] = true
                 self._battle.unitOperationCollection[attackingUnitNo].normalAttack(damage)
             end

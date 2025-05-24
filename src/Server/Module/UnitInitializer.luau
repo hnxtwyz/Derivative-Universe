@@ -20,8 +20,6 @@ function UnitInitializer.new(unitModel: Model, battle)
     return self
 end
 
-local DEFAULT_TEAM_NAME = "Default"
-
 function UnitInitializer:initUnit() : number
     -- 初始化属性
     self._unitNo = self._battle:getNextUnitNo()
@@ -36,7 +34,7 @@ function UnitInitializer:initUnit() : number
     end
     
     -- 队伍相关
-    self._battle.unitTeamCollection:setObjectTag(self._unitNo, DEFAULT_TEAM_NAME)
+    self._battle.unitTeamCollection:setObjectTag(self._unitNo, self._battle.DEFAULT_TEAM_NAME)
 
     -- 属性设置
     self._unitAttributeList:setProperties({
