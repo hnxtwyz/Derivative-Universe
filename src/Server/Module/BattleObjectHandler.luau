@@ -13,11 +13,15 @@ function BattleObjectHandler.new(battle)
 end
 
 function BattleObjectHandler:handleObject(object: Instance, unitNo: number, lifeTime: number, damage: number)
+    self:handleWeapon(object, unitNo, lifeTime, damage)
     Debris:AddItem(object, lifeTime)
+end
 
+function BattleObjectHandler:handleWeapon(object: Instance, unitNo: number, lifeTime: number, damage: number)
     local hitRecord = {}
     local unitRecord = {}
-    object.Touched:Connect(function(hit)
+    local connection = nil
+    connection = object.Touched:Connect(function(hit)
         if not hitRecord[hit] then
             hitRecord[hit] = true
             local attackingUnitNo = self._battle.findUnitCollection:getObjectTag(hit)
@@ -25,6 +29,11 @@ function BattleObjectHandler:handleObject(object: Instance, unitNo: number, life
                 unitRecord[attackingUnitNo] = true
                 self._battle.unitOperationCollection[attackingUnitNo].normalAttack(damage)
             end
+        end
+    end)
+    task.delay(lifeTime, function()
+        if connection then
+            connection:Disconnect()
         end
     end)
 end
