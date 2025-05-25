@@ -11,6 +11,7 @@ function UnitInitializer.new(unitModel: Model, battle)
     setmetatable(self, UnitInitializer)
 
     self._unitModel = unitModel
+    self._characterController = CharacterController.new(unitModel)
     self._battle = battle
 
     self._unitNo = nil
@@ -22,74 +23,84 @@ function UnitInitializer.new(unitModel: Model, battle)
     return self
 end
 
+-- ++++++++++++++++++++
+
+-- 初始化和加载
+
+-- ++++++++++++++++++++
+
 function UnitInitializer:initUnit() : number
-    -- 初始化属性
     self._unitNo = self._battle:getNextUnitNo()
+    self._battle.unitOperationCollection[self._unitNo] = {}
+    self._unitOperation = self._battle.unitOperationCollection[self._unitNo]
 
     self._unitAttributeList = self._battle.unitAttributeListCollection:getOrCreatePropertyList(self._unitNo)
     self._unitSignalList = self._battle.unitSignalListCollection:getOrCreateSignalList(self._unitNo)
-
-    -- 模型相关
-    local unitParts = ModelComponent:getChildParts(self._unitModel)
-    for _, part in unitParts do
-        self._battle.findUnitCollection:setObjectTag(part, self._unitNo)
-    end
     
-    -- 队伍相关
-    self._battle.unitTeamCollection:setObjectTag(self._unitNo, self._battle.DEFAULT_TEAM_NAME)
-
-    -- 属性设置
-    self._unitAttributeList:setProperties({
-        health = 100,
-        dead = false,
-    })
-
-    -- 属性信号
-    local healthGainedSignal = self._unitSignalList:getOrCreateSignal("HealthGained")
-    local healthLostSignal = self._unitSignalList:getOrCreateSignal("HealthLost")
-    local diedSignal = self._unitSignalList:getOrCreateSignal("Died")
-
-    healthLostSignal:Connect(function(val)
-        local currentHealth = self._unitAttributeList:getProperty("health")
-        if currentHealth > 0 then
-            self._unitModel.Humanoid.Health = currentHealth
-        else
-            diedSignal:Fire()
-        end
-    end)
-
-    diedSignal:Connect(function()
-        self._unitAttributeList:setProperty("dead", true)
-        self._unitModel.Humanoid.Health = 0
-    end)
-
-    -- 意外死亡设置
-    self._unitModel.Humanoid.Died:Connect(function()
-        local isDead = self._unitAttributeList:getProperty("dead")
-        if not isDead then
-            diedSignal:Fire()
-        end
-    end)
-
-    -- 初始化操作
-    self._battle.unitOperationCollection[self._unitNo] = {}
-    self._unitOperation = self._battle.unitOperationCollection[self._unitNo]
-    
-    self._unitOperation.normalAttack = function(val: number)
-        local currentHealth = self._unitAttributeList:getProperty("health")
-        local newHealth = math.clamp(currentHealth - val, 0, 100)
-        self._unitAttributeList:setProperty("health", newHealth)
-        healthLostSignal:Fire(val)
-    end
+    self:_initParts()
+    self:_initTeam()
+    self:_initHealthSystem()
 
     return self._unitNo
 end
 
+function UnitInitializer:_initParts()
+    for _, part in ModelComponent:getChildParts(self._unitModel) do
+        self._battle.findUnitCollection:setObjectTag(part, self._unitNo)
+    end
+end
+
+function UnitInitializer:_initTeam()
+    self._battle.unitTeamCollection:setObjectTag(self._unitNo, self._battle.DEFAULT_TEAM_NAME)
+end
+
+function UnitInitializer:_initHealthSystem()
+    self._unitAttributeList:setProperty("health", 100)
+    self._unitAttributeList:setProperty("dead", false)
+
+    local healthGainedSignal = self._unitSignalList:getOrCreateSignal("HealthGained")
+    local healthLostSignal = self._unitSignalList:getOrCreateSignal("HealthLost")
+    local diedSignal = self._unitSignalList:getOrCreateSignal("Died")
+
+    local function died()
+        self._unitAttributeList:setProperty("dead", true)
+        self._characterController.humanoid.Health = 0
+        diedSignal:Fire()
+    end
+
+    local function healthLost(val: number)
+        local currentHealth = self._unitAttributeList:getProperty("health")
+        local newHealth = math.clamp(currentHealth - val, 0, 100)
+        self._unitAttributeList:setProperty("health", newHealth)
+        if newHealth > 0 then
+            self._characterController.humanoid.Health = newHealth
+        else
+            died()
+        end
+        healthLostSignal:Fire(val)
+    end
+    
+    self._unitOperation.normalDamage = function(val: number)
+        healthLost(val)
+    end
+
+    -- 意外死亡检测
+    self._characterController.humanoid.Died:Connect(function()
+        if not self._unitAttributeList:getProperty("dead") then
+            died()
+        end
+    end)
+end
+
+-- ++++++++++++++++++++
+
+-- 设置技能
+
+-- ++++++++++++++++++++
+
 function UnitInitializer:initSkill()
-    local animator = self._unitModel.Humanoid.Animator
-
+    local animator = self._characterController.animator
     -- 原平A动画：98920670395451
-
     local A = Instance.new("Animation")
     A.AnimationId = "rbxassetid://101674903217716"
     local ATrack = animator:LoadAnimation(A)
@@ -105,14 +116,16 @@ function UnitInitializer:initSkill()
     local BA2Track = animator:LoadAnimation(BA2)
     BA2Track.Priority = Enum.AnimationPriority.Action
 
+    -- ++++++++++++++++++++
+
     -- 控制系统
 
-    local characterController = CharacterController.new(self._unitModel)
-    local cachedWalkSpeed = characterController:getWalkSpeed()
-    local cachedJumpPower = characterController:getJumpPower()
+    -- ++++++++++++++++++++
 
-    -- 打断信号，僵直产生时触发
-    local interruptedSignal = self._unitSignalList:getOrCreateSignal("Interrupted")
+    local cachedWalkSpeed = self._characterController.humanoid.WalkSpeed
+    local cachedJumpPower = self._characterController.humanoid.JumpPower
+
+    local stiffInterruptedSignal = self._unitSignalList:getOrCreateSignal("StiffInterrupted")
 
     local immunityLvCount = {
         [1] = 0,
@@ -129,7 +142,7 @@ function UnitInitializer:initSkill()
         return true
     end
 
-    local isStiff = false -- 外源控制
+    local isStiff = false -- 僵直
 
     local stiffLvCount = {
         [1] = 0,
@@ -140,25 +153,25 @@ function UnitInitializer:initSkill()
     local isPaused = false -- 攻击僵直
 
     local isBusy = false -- 不可释放技能
-    -- 无需函数更新效果，直接修改此变量即可
+    -- 无需函数更新效果，因此直接修改此变量即可
 
-    -- 是否可使用技能，限制第一段
+    -- 是否可使用技能，主要为限制第一段
     local function canUseSkill() : boolean
-        return not(isPaused or isStiff or isBusy)
+        return not(isPaused or isStiff or isBusy or self._unitAttributeList:getProperty("dead"))
     end
 
     local function isPausedOrStiff() : boolean
         return isPaused or isStiff
     end
 
-    -- 总僵直状态效果，不可移动、跳跃和释放技能
+    -- 僵直状态效果：不可移动、跳跃和释放技能
     local function updatePausedOrStiff()
         if isPausedOrStiff() then
-            characterController:restrictMovement()
-            characterController:restrictJump()
+            self._characterController:restrictMovement()
+            self._characterController:restrictJump()
         else
-            characterController:allowMovement(cachedWalkSpeed)
-            characterController:allowJump(cachedJumpPower)
+            self._characterController:allowMovement(cachedWalkSpeed)
+            self._characterController:allowJump(cachedJumpPower)
         end
     end
 
@@ -191,7 +204,7 @@ function UnitInitializer:initSkill()
             stiffLvCount[stiffLv] = stiffLvCount[stiffLv] + 1
             if not isStiff then
                 isStiff = true
-                interruptedSignal:Fire() -- 发送打断信号
+                stiffInterruptedSignal:Fire()
                 updatePausedOrStiff()
             end
             task.wait(stiffTime)
@@ -202,6 +215,12 @@ function UnitInitializer:initSkill()
             end
         end
     end
+
+    -- ++++++++++++++++++++
+
+    -- 技能
+
+    -- ++++++++++++++++++++
 
     local eStage = 0
     local e1InterruptedConnection = nil
@@ -243,7 +262,7 @@ function UnitInitializer:initSkill()
             print("技能E1触发！")
             e1Start()
 
-            e1InterruptedConnection = interruptedSignal:Once(function()
+            e1InterruptedConnection = stiffInterruptedSignal:Once(function()
                 eStage = 3
                 e1End()
                 eCoolDown()
@@ -270,10 +289,10 @@ function UnitInitializer:initSkill()
             attackBox.CanTouch = true
             attackBox.CanQuery = true
             attackBox.Transparency = 0.7
-            attackBox.CFrame = self._unitModel.HumanoidRootPart.CFrame + self._unitModel.HumanoidRootPart.CFrame.LookVector * 7
+            attackBox.CFrame = self._characterController:cframeOffset(CFrame.new(0, 0, -7))
 
-            self._battle.battleObjectHandler:objectAttack(attackBox, self._unitNo, function(attackingUnitOperation)
-                attackingUnitOperation.normalAttack(20)
+            self:_attackingObjectBind(attackBox, function(attackingUnitOperation)
+                attackingUnitOperation.normalDamage(20)
                 attackingUnitOperation.stiff(2, 0.5)
             end)
             Debris:AddItem(attackBox, 0.3)
@@ -298,8 +317,6 @@ function UnitInitializer:initSkill()
         self._unitOperation.immune(3, 2)
     end
 
-    -- 其他技能
-
     local aStage = 0
     local aConnection = nil
     local aInterruptedConnection = nil
@@ -312,8 +329,8 @@ function UnitInitializer:initSkill()
 
     local function aStart()
         self._unitOperation.manualImmune(1)
-        aConnection = self._battle.battleObjectHandler:objectAttack(self._unitModel.Function.Weapon, self._unitNo, function(attackingUnitOperation)
-            attackingUnitOperation.normalAttack(20)
+        aConnection = self:_attackingObjectBind(self._unitModel.Function.Weapon, function(attackingUnitOperation)
+            attackingUnitOperation.normalDamage(20)
             attackingUnitOperation.stiff(1, 0.5)
         end)
         ATrack:Play()
@@ -334,7 +351,7 @@ function UnitInitializer:initSkill()
             print("技能A触发！")
             aStart()
 
-            aInterruptedConnection = interruptedSignal:Once(function()
+            aInterruptedConnection = stiffInterruptedSignal:Once(function()
                 aStage = 2
                 aEnd()
                 aCoolDown()
@@ -367,15 +384,15 @@ function UnitInitializer:initSkill()
             fireball.Parent = workspace
             fireball.Shape = Enum.PartType.Ball
             fireball.Size = Vector3.new(1, 1, 1)
-            fireball.Position = self._unitModel.HumanoidRootPart.Position + self._unitModel.HumanoidRootPart.CFrame.LookVector * 10
+            fireball.CFrame = self._characterController:cframeOffset(CFrame.new(0, 0, -10))
             fireball.Color = Color3.fromRGB(255, 0, 0)
             fireball.Material = Enum.Material.Neon
             fireball.Anchored = true
             fireball.CanCollide = false
             fireball.CanTouch = true
             fireball.CanQuery = true
-            self._battle.battleObjectHandler:objectAttack(fireball, self._unitNo, function(attackingUnitOperation)
-                attackingUnitOperation.normalAttack(20)
+            self:_attackingObjectBind(fireball, function(attackingUnitOperation)
+                attackingUnitOperation.normalDamage(20)
             end)
             Debris:AddItem(fireball, 2)
 
@@ -384,5 +401,13 @@ function UnitInitializer:initSkill()
     end
 end
 
-return UnitInitializer
+function UnitInitializer:_attackingObjectBind(object: Instance, attackingFn: (table) -> ()) : RBXScriptConnection
+    return self._battle.battleObjectHandler:objectTouch(object, function(touchedUnitNo)
+        if self._battle:isEnemy(touchedUnitNo, self._unitNo) then
+            local attackingUnitOperation = self._battle.unitOperationCollection[touchedUnitNo]
+            attackingFn(attackingUnitOperation)
+        end
+    end)
+end
 
+return UnitInitializer

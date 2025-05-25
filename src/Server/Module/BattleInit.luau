@@ -51,19 +51,7 @@ function BattleInit:_listenPlayerChampionAction()
     _championActionEvent.OnServerEvent:Connect(function(player, actionName)
         local unitNo = _playerUnitNoCollection[player]
         if unitNo then
-            if actionName == "R" then
-                battle.unitOperationCollection[unitNo].R()
-            elseif actionName == "F" then
-                battle.unitOperationCollection[unitNo].F()
-            elseif actionName == "A" then
-                battle.unitOperationCollection[unitNo].A()
-            elseif actionName == "E1" then
-                battle.unitOperationCollection[unitNo].E1()
-            elseif actionName == "E2" then
-                battle.unitOperationCollection[unitNo].E2()
-            elseif actionName == "Q" then
-                battle.unitOperationCollection[unitNo].Q()
-            end
+            battle.unitOperationCollection[unitNo][actionName]()
         end
     end)
 end
