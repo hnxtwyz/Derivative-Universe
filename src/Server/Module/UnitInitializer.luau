@@ -1,3 +1,5 @@
+local Debris = game:GetService("Debris")
+
 local ModelComponent = require(game.ReplicatedStorage.Util.Model.ModelComponent)
 local CharacterController = require(game.ReplicatedStorage.Util.Character.CharacterController)
 
@@ -118,7 +120,7 @@ function UnitInitializer:initSkill()
         [3] = 0,
     }
 
-    local function canAddLvEffect(lv: number) : boolean
+    local function canAddLvStiff(lv: number) : boolean
         for i = lv, 3 do
             if immunityLvCount[i] > 0 then
                 return false
@@ -135,16 +137,23 @@ function UnitInitializer:initSkill()
         [3] = 0,
     }
 
-    local isPaused = false -- 内源阻止技能
+    local isPaused = false -- 攻击僵直
 
-    -- 隔离不同技能，即限制第一段
-    local function isBusy() : boolean
+    local isBusy = false -- 不可释放技能
+    -- 无需函数更新效果，直接修改此变量即可
+
+    -- 是否可使用技能，限制第一段
+    local function canUseSkill() : boolean
+        return not(isPaused or isStiff or isBusy)
+    end
+
+    local function isPausedOrStiff() : boolean
         return isPaused or isStiff
     end
 
-    -- 不可移动、跳跃和释放技能（通过isBusy()约束）
-    local function updateBusy()
-        if isBusy() then
+    -- 总僵直状态效果，不可移动、跳跃和释放技能
+    local function updatePausedOrStiff()
+        if isPausedOrStiff() then
             characterController:restrictMovement()
             characterController:restrictJump()
         else
@@ -155,12 +164,12 @@ function UnitInitializer:initSkill()
 
     local function pause()
         isPaused = true
-        updateBusy()
+        updatePausedOrStiff()
     end
 
     local function unpause()
         isPaused = false
-        updateBusy()
+        updatePausedOrStiff()
     end
 
     self._unitOperation.immune = function(immunityLv: number, immunityTime: number)
@@ -169,82 +178,89 @@ function UnitInitializer:initSkill()
         immunityLvCount[immunityLv] = immunityLvCount[immunityLv] - 1
     end
 
+    self._unitOperation.manualImmune = function(immunityLv: number, clearBit: boolean)
+        if clearBit then
+            immunityLvCount[immunityLv] = immunityLvCount[immunityLv] - 1
+        else
+            immunityLvCount[immunityLv] = immunityLvCount[immunityLv] + 1
+        end
+    end
+
     self._unitOperation.stiff = function(stiffLv: number, stiffTime: number)
-        if canAddLvEffect(stiffLv) then
+        if canAddLvStiff(stiffLv) then
             stiffLvCount[stiffLv] = stiffLvCount[stiffLv] + 1
             if not isStiff then
                 isStiff = true
                 interruptedSignal:Fire() -- 发送打断信号
-                updateBusy()
+                updatePausedOrStiff()
             end
             task.wait(stiffTime)
             stiffLvCount[stiffLv] = stiffLvCount[stiffLv] - 1
             if stiffLvCount[1] == 0 and stiffLvCount[2] == 0 and stiffLvCount[3] == 0 then
                 isStiff = false
-                updateBusy()
+                updatePausedOrStiff()
             end
         end
     end
 
-    local e1Stage = 0
+    local eStage = 0
     local e1InterruptedConnection = nil
-    
+
+    local function eCoolDown()
+        task.delay(0.5, function()
+            eStage = 0
+        end)
+    end
+
+    local function e1Start()
+        self._unitOperation.manualImmune(1)
+        BA1Track:Play(nil, nil, 0.2)
+        isBusy = true
+    end
+
+    local function e1End()
+        isBusy = false
+        BA1Track:Stop()
+        self._unitOperation.manualImmune(1, true)
+    end
+
+    local function e2Start()
+        self._unitOperation.manualImmune(2)
+        BA2Track:Play()
+        pause()
+    end
+
+    local function e2End()
+        unpause()
+        BA2Track:Stop()
+        self._unitOperation.manualImmune(2, true)
+    end
+
     self._unitOperation.E1 = function()
-        if not isBusy() then
-            if e1Stage == 0 then
-                e1Stage = 1
-                print("技能E1触发！")
-                if e1InterruptedConnection then
-                    e1InterruptedConnection:Disconnect()
-                end
-                pause()
-                BA1Track:Play(nil, nil, 0.2)
-                e1InterruptedConnection = interruptedSignal:Once(function()
-                    BA1Track:Stop()
-                    unpause()
-                    e1Stage = 0
-                end)
-                e1Stage = 2
-            end
+        if canUseSkill() and eStage == 0 then
+            eStage = 1
+
+            print("技能E1触发！")
+            e1Start()
+
+            e1InterruptedConnection = interruptedSignal:Once(function()
+                eStage = 3
+                e1End()
+                eCoolDown()
+            end)
         end
     end
 
     self._unitOperation.E2 = function()
-        if e1Stage == 2 then
-            e1Stage = 3
+        if eStage == 1 then
+            eStage = 2
+
+            e1InterruptedConnection:Disconnect()
+
             print("技能E2触发！")
-            if e1InterruptedConnection then
-                e1InterruptedConnection:Disconnect()
-            end
-            BA1Track:Stop()
-            unpause()
-            BA2Track:Play()
-            e1Stage = 0
-        end
-    end
+            e2Start()
+            e1End()
 
-    self._unitOperation.F = function()
-        -- 特殊测试外部僵直，暂不计入
-        print("技能F触发！")
-        self._unitOperation.stiff(1, 2)
-        if not isBusy() then
-            
-        end
-    end
-
-    self._unitOperation.Q = function()
-        if not isBusy() then
-            print("技能Q触发！")
-            self._unitOperation.immune(1, 3)
-        end
-    end
-
-    -- 其他技能
-
-    self._unitOperation.A = function()
-        if not isBusy() then
-            print("技能A触发！")
-            ATrack:Play()
             local attackBox = Instance.new("Part")
             attackBox.Name = "AttackBox"
             attackBox.Parent = workspace
@@ -256,14 +272,96 @@ function UnitInitializer:initSkill()
             attackBox.Transparency = 0.7
             attackBox.CFrame = self._unitModel.HumanoidRootPart.CFrame + self._unitModel.HumanoidRootPart.CFrame.LookVector * 7
 
-            self._battle.battleObjectHandler:handleObject(attackBox, self._unitNo, 0.3, 20)
+            self._battle.battleObjectHandler:objectAttack(attackBox, self._unitNo, function(attackingUnitOperation)
+                attackingUnitOperation.normalAttack(20)
+                attackingUnitOperation.stiff(2, 0.5)
+            end)
+            Debris:AddItem(attackBox, 0.3)
+
+            -- e2暂无打断，不会提前e2End
+            task.wait(0.3)
+            e2End()
+
+            eCoolDown()
         end
     end
 
+    self._unitOperation.F = function()
+        -- 测试外部僵直，不设置释放限制
+        print("技能F触发！")
+        self._unitOperation.stiff(3, 2)
+    end
+
+    self._unitOperation.Q = function()
+        -- 测试霸体
+        print("技能Q触发！")
+        self._unitOperation.immune(3, 2)
+    end
+
+    -- 其他技能
+
+    local aStage = 0
+    local aConnection = nil
+    local aInterruptedConnection = nil
+
+    local function aCoolDown()
+        task.delay(0.5, function()
+            aStage = 0
+        end)
+    end
+
+    local function aStart()
+        self._unitOperation.manualImmune(1)
+        aConnection = self._battle.battleObjectHandler:objectAttack(self._unitModel.Function.Weapon, self._unitNo, function(attackingUnitOperation)
+            attackingUnitOperation.normalAttack(20)
+            attackingUnitOperation.stiff(1, 0.5)
+        end)
+        ATrack:Play()
+        pause()
+    end
+
+    local function aEnd()
+        unpause()
+        ATrack:Stop()
+        aConnection:Disconnect()
+        self._unitOperation.manualImmune(1, true)
+    end
+
+    self._unitOperation.A = function()
+        if canUseSkill() and aStage == 0 then
+            aStage = 1
+
+            print("技能A触发！")
+            aStart()
+
+            aInterruptedConnection = interruptedSignal:Once(function()
+                aStage = 2
+                aEnd()
+                aCoolDown()
+            end)
+            task.wait(0.375)
+            aInterruptedConnection:Disconnect()
+
+            if aStage == 1 then
+                aEnd()
+                aCoolDown()
+            end
+        end
+    end
+
+    local rStage = 0
+
+    local function rCoolDown()
+        task.delay(2, function()
+            rStage = 0
+        end)
+    end
+
     self._unitOperation.R = function()
-        if not isBusy() then
+        if canUseSkill() and rStage == 0 then
+            rStage = 1
+
             print("技能R触发！")
-            BA2Track:Play()
             local fireball = Instance.new("Part")
             fireball.Name = "Fireball"
             fireball.Parent = workspace
@@ -276,8 +374,12 @@ function UnitInitializer:initSkill()
             fireball.CanCollide = false
             fireball.CanTouch = true
             fireball.CanQuery = true
+            self._battle.battleObjectHandler:objectAttack(fireball, self._unitNo, function(attackingUnitOperation)
+                attackingUnitOperation.normalAttack(20)
+            end)
+            Debris:AddItem(fireball, 2)
 
-            self._battle.battleObjectHandler:handleObject(fireball, self._unitNo, 5, 20)
+            rCoolDown()
         end
     end
 end

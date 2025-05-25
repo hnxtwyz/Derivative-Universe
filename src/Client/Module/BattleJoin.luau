@@ -74,7 +74,7 @@ function BattleJoin:_initBattleLocal()
     -- 设置A技能触发
     _battleInputActionCollection:addHoldInputAction("A", function()
         _championActionEvent:FireServer("A")
-    end, 0.5, Enum.UserInputType.MouseButton1)
+    end, 0.3, Enum.UserInputType.MouseButton1)
 
     -- 设置E技能触发
     _battleInputActionCollection:addLongPressInputAction("E", function()
