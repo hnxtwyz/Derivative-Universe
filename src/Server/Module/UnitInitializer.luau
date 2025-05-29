@@ -39,7 +39,7 @@ function UnitInitializer:initUnit() : number
     
     self:_initParts()
     self:_initTeam()
-    self:_initHealthSystem()
+    self:_initSystemAndSkill()
 
     return self._unitNo
 end
@@ -54,7 +54,14 @@ function UnitInitializer:_initTeam()
     self._battle.unitTeamCollection:setObjectTag(self._unitNo, self._battle.DEFAULT_TEAM_NAME)
 end
 
-function UnitInitializer:_initHealthSystem()
+function UnitInitializer:_initSystemAndSkill()
+
+    -- ++++++++++++++++++++
+
+    -- 生命值系统
+
+    -- ++++++++++++++++++++
+
     self._unitAttributeList:setProperty("health", 100)
     self._unitAttributeList:setProperty("dead", false)
 
@@ -79,10 +86,6 @@ function UnitInitializer:_initHealthSystem()
         end
         healthLostSignal:Fire(val)
     end
-    
-    self._unitOperation.normalDamage = function(val: number)
-        healthLost(val)
-    end
 
     -- 意外死亡检测
     self._characterController.humanoid.Died:Connect(function()
@@ -90,31 +93,17 @@ function UnitInitializer:_initHealthSystem()
             died()
         end
     end)
-end
 
--- ++++++++++++++++++++
+    -- ++++++++++++++++++++
 
--- 设置技能
+    -- 动画设置
 
--- ++++++++++++++++++++
+    -- ++++++++++++++++++++
 
-function UnitInitializer:initSkill()
-    local animator = self._characterController.animator
     -- 原平A动画：98920670395451
-    local A = Instance.new("Animation")
-    A.AnimationId = "rbxassetid://101674903217716"
-    local ATrack = animator:LoadAnimation(A)
-    ATrack.Priority = Enum.AnimationPriority.Action
-
-    local BA1 = Instance.new("Animation")
-    BA1.AnimationId = "rbxassetid://132898010483913"
-    local BA1Track = animator:LoadAnimation(BA1)
-    BA1Track.Priority = Enum.AnimationPriority.Action
-
-    local BA2 = Instance.new("Animation")
-    BA2.AnimationId = "rbxassetid://127017048362548"
-    local BA2Track = animator:LoadAnimation(BA2)
-    BA2Track.Priority = Enum.AnimationPriority.Action
+    self._characterController:loadAnimation("A", "rbxassetid://101674903217716")
+    self._characterController:loadAnimation("BA1", "rbxassetid://132898010483913")
+    self._characterController:loadAnimation("BA2", "rbxassetid://127017048362548")
 
     -- ++++++++++++++++++++
 
@@ -175,6 +164,7 @@ function UnitInitializer:initSkill()
         end
     end
 
+    -- 攻击僵直，不可移动、跳跃和释放技能，需自行解除
     local function pause()
         isPaused = true
         updatePausedOrStiff()
@@ -191,12 +181,12 @@ function UnitInitializer:initSkill()
         immunityLvCount[immunityLv] = immunityLvCount[immunityLv] - 1
     end
 
-    self._unitOperation.manualImmune = function(immunityLv: number, clearBit: boolean)
-        if clearBit then
-            immunityLvCount[immunityLv] = immunityLvCount[immunityLv] - 1
-        else
-            immunityLvCount[immunityLv] = immunityLvCount[immunityLv] + 1
-        end
+    self._unitOperation.manualImmune = function(immunityLv: number)
+        immunityLvCount[immunityLv] = immunityLvCount[immunityLv] + 1
+    end
+
+    self._unitOperation.liftImmune = function(immunityLv: number)
+        immunityLvCount[immunityLv] = immunityLvCount[immunityLv] - 1
     end
 
     self._unitOperation.stiff = function(stiffLv: number, stiffTime: number)
@@ -218,6 +208,46 @@ function UnitInitializer:initSkill()
 
     -- ++++++++++++++++++++
 
+    -- 伤害系统
+
+    -- ++++++++++++++++++++
+
+    -- 格挡状态，判断参数，可直接修改
+    local isBlocking = false
+
+    -- 发送参数：伤害来源单位编号
+    local attackBlockedSignal = self._unitSignalList:getOrCreateSignal("AttackBlocked")
+
+    self._unitOperation.normalDamage = function(damageSrcNo: number, val: number, exEffect: () -> ()?)
+        if isBlocking then
+            attackBlockedSignal:Fire(damageSrcNo)
+        else
+            healthLost(val)
+            if exEffect then
+                exEffect()
+            end
+        end
+    end
+
+    -- ++++++++++++++++++++
+
+    -- 位移系统
+
+    -- ++++++++++++++++++++
+
+    self._unitOperation.cframeOffset = function(cframe: CFrame) : CFrame
+        return self._characterController:cframeOffset(cframe)
+    end
+
+    -- 位移，速度为grid/s，位移过程中将会阻塞线程
+    self._unitOperation.moveTo = function(cframe: CFrame, speed: number)
+        local duration = (cframe.Position - self._characterController.humanoidRootPart.Position).Magnitude / speed
+        self._characterController:moveTo(cframe, duration)
+        task.wait(duration)
+    end
+
+    -- ++++++++++++++++++++
+
     -- 技能
 
     -- ++++++++++++++++++++
@@ -233,26 +263,26 @@ function UnitInitializer:initSkill()
 
     local function e1Start()
         self._unitOperation.manualImmune(1)
-        BA1Track:Play(nil, nil, 0.2)
+        self._characterController:playAnimation("BA1", nil, nil, 0.2)
         isBusy = true
     end
 
     local function e1End()
         isBusy = false
-        BA1Track:Stop()
-        self._unitOperation.manualImmune(1, true)
+        self._characterController:stopAnimation("BA1")
+        self._unitOperation.liftImmune(1)
     end
 
     local function e2Start()
         self._unitOperation.manualImmune(2)
-        BA2Track:Play()
+        self._characterController:playAnimation("BA2")
         pause()
     end
 
     local function e2End()
         unpause()
-        BA2Track:Stop()
-        self._unitOperation.manualImmune(2, true)
+        self._characterController:stopAnimation("BA2")
+        self._unitOperation.liftImmune(2)
     end
 
     self._unitOperation.E1 = function()
@@ -292,8 +322,9 @@ function UnitInitializer:initSkill()
             attackBox.CFrame = self._characterController:cframeOffset(CFrame.new(0, 0, -7))
 
             self:_attackingObjectBind(attackBox, function(attackingUnitOperation)
-                attackingUnitOperation.normalDamage(20)
-                attackingUnitOperation.stiff(2, 0.5)
+                attackingUnitOperation.normalDamage(self._unitNo, 20, function()
+                    attackingUnitOperation.stiff(2, 0.5)
+                end)
             end)
             Debris:AddItem(attackBox, 0.3)
 
@@ -330,18 +361,19 @@ function UnitInitializer:initSkill()
     local function aStart()
         self._unitOperation.manualImmune(1)
         aConnection = self:_attackingObjectBind(self._unitModel.Function.Weapon, function(attackingUnitOperation)
-            attackingUnitOperation.normalDamage(20)
-            attackingUnitOperation.stiff(1, 0.5)
+            attackingUnitOperation.normalDamage(self._unitNo, 20, function()
+                attackingUnitOperation.stiff(1, 0.5)
+            end)
         end)
-        ATrack:Play()
+        self._characterController:playAnimation("A")
         pause()
     end
 
     local function aEnd()
         unpause()
-        ATrack:Stop()
+        self._characterController:stopAnimation("A")
         aConnection:Disconnect()
-        self._unitOperation.manualImmune(1, true)
+        self._unitOperation.liftImmune(1)
     end
 
     self._unitOperation.A = function()
@@ -368,8 +400,11 @@ function UnitInitializer:initSkill()
 
     local rStage = 0
 
+    local rInterruptedConnection = nil
+    local rBlockedConnection = nil
+
     local function rCoolDown()
-        task.delay(2, function()
+        task.delay(0.5, function()
             rStage = 0
         end)
     end
@@ -378,25 +413,58 @@ function UnitInitializer:initSkill()
         if canUseSkill() and rStage == 0 then
             rStage = 1
 
+            -- 0.2秒前摇
+            self._unitOperation.manualImmune(2)
             print("技能R触发！")
-            local fireball = Instance.new("Part")
-            fireball.Name = "Fireball"
-            fireball.Parent = workspace
-            fireball.Shape = Enum.PartType.Ball
-            fireball.Size = Vector3.new(1, 1, 1)
-            fireball.CFrame = self._characterController:cframeOffset(CFrame.new(0, 0, -10))
-            fireball.Color = Color3.fromRGB(255, 0, 0)
-            fireball.Material = Enum.Material.Neon
-            fireball.Anchored = true
-            fireball.CanCollide = false
-            fireball.CanTouch = true
-            fireball.CanQuery = true
-            self:_attackingObjectBind(fireball, function(attackingUnitOperation)
-                attackingUnitOperation.normalDamage(20)
-            end)
-            Debris:AddItem(fireball, 2)
+            pause()
 
-            rCoolDown()
+            rInterruptedConnection = stiffInterruptedSignal:Once(function()
+                rStage = 2
+
+                unpause()
+                print("技能R被打断！")
+                self._unitOperation.liftImmune(2)
+
+                rCoolDown()
+            end)
+            task.wait(0.2)
+            rInterruptedConnection:Disconnect()
+
+            if rStage == 1 then
+                isBlocking = true -- 依靠此来鉴别下一步状态
+
+                -- 此时2级霸体和攻击僵直状态仍在
+                print("开始挡刀！")
+
+                rBlockedConnection = attackBlockedSignal:Once(function(damageSrcNo)
+                    isBlocking = false
+
+                    unpause()
+                    print("结束挡刀，反击成功！")
+                    
+                    local targetCFrame = self._battle.unitOperationCollection[damageSrcNo].cframeOffset(CFrame.new(0, 0, 5))
+                    self._unitOperation.moveTo(targetCFrame, 100)
+                    self._characterController:playAnimation("A")
+                    self._battle.unitOperationCollection[damageSrcNo].normalDamage(self._unitNo, 20)
+
+                    self._unitOperation.liftImmune(2)
+
+                    rCoolDown()
+                end)
+                task.wait(0.4)
+                rBlockedConnection:Disconnect()
+
+                if isBlocking then
+                    isBlocking = false
+
+                    unpause()
+                    print("结束挡刀，反击失败！")
+                    self._unitOperation.liftImmune(2)
+                    self._unitOperation.stiff(2, 0.4)
+
+                    rCoolDown()
+                end
+            end
         end
     end
 end
@@ -406,6 +474,15 @@ function UnitInitializer:_attackingObjectBind(object: Instance, attackingFn: (ta
         if self._battle:isEnemy(touchedUnitNo, self._unitNo) then
             local attackingUnitOperation = self._battle.unitOperationCollection[touchedUnitNo]
             attackingFn(attackingUnitOperation)
+        end
+    end)
+end
+
+function UnitInitializer:robotAutoAttack()
+    task.spawn(function()
+        while task.wait(2) do
+            print("机器人自动攻击！")
+            self._unitOperation.A()
         end
     end)
 end

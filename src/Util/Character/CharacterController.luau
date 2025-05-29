@@ -1,3 +1,5 @@
+local TweenService = game:GetService("TweenService")
+
 local CharacterController = {}
 CharacterController.__index = CharacterController
 
@@ -6,7 +8,9 @@ function CharacterController.new(character: Model)
     setmetatable(self, CharacterController)
 
     self.humanoid = character:FindFirstChild("Humanoid")
-    self.animator = self.humanoid:FindFirstChild("Animator")
+
+    self._animator = self.humanoid:FindFirstChild("Animator")
+    self._animationTracks = {}
 
     self.humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 
@@ -36,7 +40,45 @@ end
 -- ++++++++++++++++++++
 
 function CharacterController:cframeOffset(cframe: CFrame) : CFrame
-    return self.humanoidRootPart.CFrame * cframe
+    if cframe then
+        return self.humanoidRootPart.CFrame * cframe
+    else
+        return self.humanoidRootPart.CFrame
+    end
+end
+
+function CharacterController:moveTo(cframe: CFrame, duration: number)
+    local tweenInfo = TweenInfo.new(
+        duration,
+        Enum.EasingStyle.Linear,
+        Enum.EasingDirection.Out
+    )
+    local tween = TweenService:Create(self.humanoidRootPart, tweenInfo, {CFrame = cframe})
+    tween:Play()
+end
+
+-- ++++++++++++++++++++
+
+function CharacterController:loadAnimation(animationName: string, animationId: string)
+    if self._animator then
+        local animation = Instance.new("Animation")
+        animation.AnimationId = animationId
+        local animationTrack = self._animator:LoadAnimation(animation)
+        animationTrack.Priority = Enum.AnimationPriority.Action
+        self._animationTracks[animationName] = animationTrack
+    end
+end
+
+function CharacterController:playAnimation(animationName: string, ...: any)
+    if self._animationTracks[animationName] then
+        self._animationTracks[animationName]:Play(...)
+    end
+end
+
+function CharacterController:stopAnimation(animationName: string)
+    if self._animationTracks[animationName] then
+        self._animationTracks[animationName]:Stop()
+    end
 end
 
 -- ++++++++++++++++++++

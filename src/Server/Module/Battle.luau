@@ -27,6 +27,12 @@ function Battle.new(battleNo: number)
     return self
 end
 
+-- ++++++++++++++++++++
+
+-- 辅助函数
+
+-- ++++++++++++++++++++
+
 function Battle:getNextUnitNo() : number
     self.unitCount += 1
     return self.unitCount
@@ -40,11 +46,18 @@ function Battle:isEnemy(unitNo1: number, unitNo2: number) : boolean
     return team1 ~= team2 or team1 == Battle.DEFAULT_TEAM_NAME and unitNo1 ~= unitNo2
 end
 
+-- ++++++++++++++++++++
+
+-- 添加单位
+
+-- ++++++++++++++++++++
+
 function Battle:addUnit(unitModel: Model, isPlayer: boolean?) : number
     local unitInitializer = UnitInitializer.new(unitModel, self)
     local unitNo = unitInitializer:initUnit()
     if isPlayer then
-        unitInitializer:initSkill()
+    else
+        unitInitializer:robotAutoAttack()
     end
     return unitNo
 end
