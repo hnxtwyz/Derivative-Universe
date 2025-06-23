@@ -47,7 +47,7 @@ function CharacterController:cframeOffset(cframe: CFrame) : CFrame
     end
 end
 
-function CharacterController:moveTo(cframe: CFrame, duration: number)
+function CharacterController:moveTo(cframe: CFrame, duration: number) : Tween
     local tweenInfo = TweenInfo.new(
         duration,
         Enum.EasingStyle.Linear,
@@ -55,6 +55,18 @@ function CharacterController:moveTo(cframe: CFrame, duration: number)
     )
     local tween = TweenService:Create(self.humanoidRootPart, tweenInfo, {CFrame = cframe})
     tween:Play()
+    return tween
+end
+
+-- ++++++++++++++++++++
+
+function CharacterController:applyLinearVelocity(velocity: Vector3) : LinearVelocity
+    local linearVelocity = Instance.new("LinearVelocity")
+    linearVelocity.ForceLimitsEnabled = false
+    linearVelocity.Attachment0 = self.humanoidRootPart.RootAttachment
+    linearVelocity.VectorVelocity = velocity
+    linearVelocity.Parent = self.humanoidRootPart
+    return linearVelocity
 end
 
 -- ++++++++++++++++++++
