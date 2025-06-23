@@ -64,29 +64,54 @@ function BattleJoin:_initBattleLocal()
     -- 设置R技能触发
     _battleInputActionCollection:addSinglePressInputAction("R", function()
         _championActionEvent:FireServer("R")
-    end, Enum.KeyCode.R)
+    end, false, Enum.KeyCode.R)
 
     -- 设置F技能触发
     _battleInputActionCollection:addSinglePressInputAction("F", function()
         _championActionEvent:FireServer("F")
-    end, Enum.KeyCode.F)
+    end, false, Enum.KeyCode.F)
 
     -- 设置A技能触发
     _battleInputActionCollection:addHoldInputAction("A", function()
         _championActionEvent:FireServer("A")
-    end, 0.3, Enum.UserInputType.MouseButton1)
+    end, 0.2, false, Enum.UserInputType.MouseButton1)
 
     -- 设置E技能触发
     _battleInputActionCollection:addLongPressInputAction("E", function()
         _championActionEvent:FireServer("E1")
     end, function()
         _championActionEvent:FireServer("E2")
-    end, Enum.KeyCode.E)
+    end, false, Enum.KeyCode.E)
 
     -- 设置Q技能触发
     _battleInputActionCollection:addSinglePressInputAction("Q", function()
         _championActionEvent:FireServer("Q")
-    end, Enum.KeyCode.Q)
+    end, false, Enum.KeyCode.Q)
+
+    -- 设置Shift技能触发
+    _battleInputActionCollection:addSinglePressInputAction("Shift", function()
+        _championActionEvent:FireServer("Shift")
+    end, false, Enum.KeyCode.LeftShift)
+
+    -- 设置Forward移动触发
+    _battleInputActionCollection:addSinglePressInputAction("Forward", function()
+        _championActionEvent:FireServer("Forward")
+    end, true, Enum.KeyCode.W)
+
+    -- 设置Left移动触发
+    _battleInputActionCollection:addSinglePressInputAction("Left", function()
+        _championActionEvent:FireServer("Left")
+    end, true, Enum.KeyCode.A)
+
+    -- 设置Backward移动触发
+    _battleInputActionCollection:addSinglePressInputAction("Backward", function()
+        _championActionEvent:FireServer("Backward")
+    end, true, Enum.KeyCode.S)
+
+    -- 设置Right移动触发
+    _battleInputActionCollection:addSinglePressInputAction("Right", function()
+        _championActionEvent:FireServer("Right")
+    end, true, Enum.KeyCode.D)
 end
 
 -- ++++++++++++++++++++

@@ -30,10 +30,14 @@ end
 -- ++++++++++++++++++++
 
 -- 单按模式
-function InputActionCollection:addSinglePressInputAction(inputActionName: string, callback: InputActionCallback, ...: Enum.KeyCode | Enum.UserInputType)
+function InputActionCollection:addSinglePressInputAction(inputActionName: string, callback: InputActionCallback, passOption: boolean, ...: Enum.KeyCode | Enum.UserInputType)
     local inputActionHandler = function(_, inputState: Enum.UserInputState, inputObject: InputObject)
         if inputState == Enum.UserInputState.Begin then
             callback(inputObject)
+        end
+
+        if passOption then
+            return Enum.ContextActionResult.Pass
         end
     end
     
@@ -41,21 +45,29 @@ function InputActionCollection:addSinglePressInputAction(inputActionName: string
 end
 
 -- 释放模式
-function InputActionCollection:addReleaseInputAction(inputActionName: string, callback: InputActionCallback, ...: Enum.KeyCode | Enum.UserInputType)  
+function InputActionCollection:addReleaseInputAction(inputActionName: string, callback: InputActionCallback, passOption: boolean, ...: Enum.KeyCode | Enum.UserInputType)  
     local inputActionHandler = function(_, inputState: Enum.UserInputState, inputObject: InputObject)
         if inputState == Enum.UserInputState.End then
             callback(inputObject)
         end
+    end
+
+    if passOption then
+        return Enum.ContextActionResult.Pass
     end
     
     self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- 持续/变化模式
-function InputActionCollection:addChangeInputAction(inputActionName: string, callback: InputActionCallback, ...: Enum.KeyCode | Enum.UserInputType)  
+function InputActionCollection:addChangeInputAction(inputActionName: string, callback: InputActionCallback, passOption: boolean, ...: Enum.KeyCode | Enum.UserInputType)  
     local inputActionHandler = function(_, inputState: Enum.UserInputState, inputObject: InputObject)
         if inputState == Enum.UserInputState.Change then
             callback(inputObject)
+        end
+
+        if passOption then
+            return Enum.ContextActionResult.Pass
         end
     end
     
@@ -63,7 +75,7 @@ function InputActionCollection:addChangeInputAction(inputActionName: string, cal
 end
 
 -- 按住间隔模式
-function InputActionCollection:addHoldInputAction(inputActionName: string, callback: InputActionCallback, interval: number, ...: Enum.KeyCode | Enum.UserInputType)
+function InputActionCollection:addHoldInputAction(inputActionName: string, callback: InputActionCallback, interval: number, passOption: boolean, ...: Enum.KeyCode | Enum.UserInputType)
     local isHolding = false
     local lastTriggerTime = 0
     local thread = nil
@@ -91,6 +103,10 @@ function InputActionCollection:addHoldInputAction(inputActionName: string, callb
                 task.cancel(thread)
             end
         end
+
+        if passOption then
+            return Enum.ContextActionResult.Pass
+        end
     end
     
     self:_addInputAction(inputActionName, inputActionHandler, ...)
@@ -101,6 +117,7 @@ function InputActionCollection:addLongPressInputAction(
     inputActionName: string, 
     pressCallback: InputActionCallback, 
     releaseCallback: InputActionCallback, 
+    passOption: boolean,
     ...: Enum.KeyCode | Enum.UserInputType
 )
     local inputActionHandler = function(_, inputState: Enum.UserInputState, inputObject: InputObject)
@@ -109,13 +126,17 @@ function InputActionCollection:addLongPressInputAction(
         elseif inputState == Enum.UserInputState.End then
             releaseCallback(inputObject)
         end
+
+        if passOption then
+            return Enum.ContextActionResult.Pass
+        end
     end
     
     self:_addInputAction(inputActionName, inputActionHandler, ...)
 end
 
 -- 双按模式
-function InputActionCollection:addDoublePressInputAction(inputActionName: string, callback: InputActionCallback, interval: number, ...: Enum.KeyCode | Enum.UserInputType)
+function InputActionCollection:addDoublePressInputAction(inputActionName: string, callback: InputActionCallback, interval: number, passOption: boolean, ...: Enum.KeyCode | Enum.UserInputType)
     local pressCount = 0
     local resetThread = nil
     
@@ -137,6 +158,10 @@ function InputActionCollection:addDoublePressInputAction(inputActionName: string
                 task.spawn(callback, inputObject)
             else
                 resetThread = task.spawn(resetPressCount)
+            end
+
+            if passOption then
+                return Enum.ContextActionResult.Pass
             end
         end
     end

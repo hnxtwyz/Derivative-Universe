@@ -82,7 +82,7 @@ end
 function CameraLock:setKey(...: Enum.KeyCode | Enum.UserInputType)
     _inputActionCollection:addSinglePressInputAction("toggle", function()
         self:toggle()
-    end, ...)
+    end, false, ...)
 end
 
 function CameraLock:changeConfig(config)
@@ -117,6 +117,7 @@ function CameraLock:_enableToggle()
         function(inputObject)
             self:_updateCameraAngleFromInput(inputObject)
         end,
+        false,
         Enum.UserInputType.MouseMovement)
 
     RunService:BindToRenderStep(
