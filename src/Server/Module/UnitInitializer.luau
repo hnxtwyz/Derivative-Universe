@@ -320,7 +320,7 @@ function UnitInitializer:_initSkillSystem()
 
     local eStage = 0
 
-    local e2Signal = Signal.new()
+    local e2PressedSignal = Signal.new()
 
     local function eCoolDown()
         task.delay(0.5, function()
@@ -329,15 +329,15 @@ function UnitInitializer:_initSkillSystem()
     end
 
     local function e1Start()
-        self._unitOperation.manualImmune(1)
-        self._characterController:playAnimation("BA1", nil, nil, 0.2)
-        isBusy = true
+        self._unitOperation.manualImmune(1) -- 1级霸体
+        self._characterController:playAnimation("BA1", nil, nil, 0.2) -- 蓄力动画
+        isBusy = true -- 不可释放技能
     end
 
     local function e1End()
-        isBusy = false
-        self._characterController:stopAnimation("BA1")
-        self._unitOperation.liftImmune(1)
+        isBusy = false -- 可释放技能
+        self._characterController:stopAnimation("BA1") -- 蓄力动画结束
+        self._unitOperation.liftImmune(1) -- 取消霸体
     end
 
     local function e2Start()
@@ -357,20 +357,23 @@ function UnitInitializer:_initSkillSystem()
             eStage = 1
 
             print("技能E1触发！")
-            e1Start()
+            e1Start() -- 蓄力开始
 
-            local e1Interrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
-                eStage = 3
-            end)
-            local toE2 = Promise.fromEvent(e2Signal):andThen(function()
+            -- 情况1：按下E2
+            local e2Pressed = Promise.fromEvent(e2PressedSignal):andThen(function()
                 eStage = 2
             end)
+            -- 情况2：被僵直打断
+            local e1StiffInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
+                eStage = 3
+            end)
 
-            Promise.race({e1Interrupted, toE2}):expect()
+            Promise.race({e1StiffInterrupted, e2Pressed}):expect()
 
-            e1End()
+            e1End() -- 蓄力结束
 
             if eStage == 2 then
+                -- 情况1：按下E2
                 print("技能E2触发！")
                 e2Start()
 
@@ -396,13 +399,15 @@ function UnitInitializer:_initSkillSystem()
                 task.wait(0.3)
                 e2End()   
             end
+            -- 情况2：被僵直打断（无后续操作）
 
             eCoolDown()
         end
     end
 
+    -- 将按下E2转化为信号
     self._unitOperation.E2 = function()
-        e2Signal:Fire()
+        e2PressedSignal:Fire()
     end
 
     -- ++++++++++++++++++++
@@ -445,21 +450,23 @@ function UnitInitializer:_initSkillSystem()
     end
 
     local function aStart()
-        self._unitOperation.manualImmune(1)
+        self._unitOperation.manualImmune(1) -- 1级霸体
+        -- 武器攻击效果
         aAttackingConnection = self:_attackingObjectBind(self._unitModel.Function.Weapon, function(attackingUnitOperation)
             attackingUnitOperation.normalDamage(self._unitNo, 20, function()
+                -- 附加1级僵直
                 attackingUnitOperation.stiff(1, 0.5)
             end)
         end)
-        self._characterController:playAnimation("A")
-        self._unitOperation.pause()
+        self._characterController:playAnimation("A") -- 攻击动画
+        self._unitOperation.pause() -- 自身攻击僵直
     end
 
     local function aEnd()
-        self._unitOperation.unpause()
-        self._characterController:stopAnimation("A")
-        aAttackingConnection:Disconnect()
-        self._unitOperation.liftImmune(1)
+        self._unitOperation.unpause() -- 自身攻击僵直结束
+        self._characterController:stopAnimation("A") -- 攻击动画结束
+        aAttackingConnection:Disconnect() -- 武器攻击效果结束
+        self._unitOperation.liftImmune(1) -- 取消1级霸体
     end
 
     self._unitOperation.A = function()
@@ -467,16 +474,20 @@ function UnitInitializer:_initSkillSystem()
             aStage = 1
 
             print("技能A触发！")
-            aStart()
+            aStart() -- 攻击开始
 
-            local aWait = Promise.delay(0.375)
-            local aInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
+            -- 情况1：完成攻击
+            local aCompleted = Promise.delay(0.375):andThen(function()
                 aStage = 2
             end)
+            -- 情况2：被僵直打断
+            local aStiffInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
+                aStage = 3
+            end)
 
-            Promise.race({aWait, aInterrupted}):expect()
+            Promise.race({aCompleted, aStiffInterrupted}):expect()
 
-            aEnd()
+            aEnd() -- 攻击结束
             aCoolDown()
         end
     end
@@ -497,55 +508,70 @@ function UnitInitializer:_initSkillSystem()
         end)
     end
 
+    local function r1Start()
+        self._unitOperation.manualImmune(2) -- 2级霸体
+        self._unitOperation.pause() -- 攻击僵直
+    end
+
+    local function r1End()
+        self._unitOperation.unpause() -- 攻击僵直结束
+        self._unitOperation.liftImmune(2) -- 取消2级霸体
+    end
+
     self._unitOperation.R = function()
         if self._unitOperation.canUseSkill() and rStage == 0 then
             rStage = 1
 
             print("技能R触发！")
-            -- 挡刀前摇
-            self._unitOperation.manualImmune(2)
-            self._unitOperation.pause()
+            r1Start() -- 挡刀前摇
 
-            local rWait = Promise.delay(0.2)
-            local rInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
+            -- 情况1：完成前摇
+            local r1Completed = Promise.delay(0.2):andThen(function()
                 rStage = 2
             end)
+            -- 情况2：被僵直打断
+            local r1StiffInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
+                rStage = 3
+            end)
 
-            Promise.race({rWait, rInterrupted}):expect()
+            Promise.race({r1Completed, r1StiffInterrupted}):expect()
 
-            -- 此时2级霸体和攻击僵直状态仍在
-            if rStage == 1 then
+            r1End() -- 挡刀前摇结束
+
+            -- R2
+
+            if rStage == 2 then
                 print("开始挡刀！")
+                r1Start()
                 self._unitAttributeList:setProperty("isBlocking", true)
 
-                local blockingWait = Promise.delay(0.4)
-                local blockingInterrupted = Promise.fromEvent(attackBlockedSignal):andThen(function(damageSrcNo)
-                    rStage = 3
+                -- 情况1：完成挡刀
+                local blockingCompleted = Promise.delay(0.4):andThen(function()
+                    rStage = 4
+                end)
+                -- 情况2：挡刀成功
+                local blockingSuccess = Promise.fromEvent(attackBlockedSignal):andThen(function(damageSrcNo)
+                    rStage = 5
                     blockedSrcNo = damageSrcNo
                 end)
 
-                Promise.race({blockingWait, blockingInterrupted}):expect()
+                Promise.race({blockingCompleted, blockingSuccess}):expect()
 
                 self._unitAttributeList:setProperty("isBlocking", false)
-                self._unitOperation.unpause()
+                r1End()
 
-                if rStage == 3 then
+                if rStage == 5 then
                     print("结束挡刀，反击成功！")
                     local targetCFrame = self._battle.unitOperationCollection[blockedSrcNo].cframeOffset(CFrame.new(0, 0, 5))
                     self._unitOperation.moveTo(targetCFrame, 100)
                     self._characterController:playAnimation("A")
                     -- 没有等待移动便造成伤害
                     self._battle.unitOperationCollection[blockedSrcNo].normalDamage(self._unitNo, 20)
-                else
+                elseif rStage == 4 then
                     print("结束挡刀，反击失败！")
                     self._unitOperation.stiff(2, 0.4)
                 end
-            else
-                print("技能R被打断！")
-                self._unitOperation.unpause()
             end
-
-            self._unitOperation.liftImmune(2)
 
             rCoolDown()
         end
@@ -595,64 +621,82 @@ function UnitInitializer:_initSkillSystem()
 
     local shiftStage = 0
 
-    local shift2Signal = Signal.new()
+    local shift2PressedSignal = Signal.new()
+
+    local linearVelocity = nil
+
+    local function shiftCoolDown()
+        shiftStage = 0
+    end
+
+    local function sprintStart(v: number)
+        self._unitOperation.pause()
+        computeSprintDirection()
+        linearVelocity = self._characterController:applyLinearVelocity(sprintDirection * v)
+    end
+
+    local function sprintEnd()
+        linearVelocity:Destroy()
+        self._unitOperation.unpause()
+    end
+    
+    local function afterSprint()
+        self._unitOperation.pause()
+        task.wait(0.2)
+        self._unitOperation.unpause()
+    end
 
     self._unitOperation.Shift = function()
         if self._unitOperation.canUseSkill() and shiftStage == 0 then
             shiftStage = 1
 
-            self._unitOperation.pause()
-
-            computeSprintDirection()
-            -- 给人物施加力，向前移动一段距离
-            local linearVelocity = self._characterController:applyLinearVelocity(sprintDirection * 100)
+            print("技能Shift触发！")
+            sprintStart(100)
             
-            local shiftWait = Promise.delay(0.3):andThen(function()
-                shiftStage = 4
-            end)
-            local shiftInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
-                shiftStage = 3
-            end)
-            local toShift2 = Promise.fromEvent(shift2Signal):andThen(function()
+            -- 情况1：完成移动
+            local shiftCompleted = Promise.delay(0.3):andThen(function()
                 shiftStage = 2
             end)
+            -- 情况2：被僵直打断
+            local shiftStiffInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
+                shiftStage = 3
+            end)
+            -- 情况3：按下Shift2，触发二段闪
+            local shift2Pressed = Promise.fromEvent(shift2PressedSignal):andThen(function()
+                shiftStage = 4
+            end)
 
-            Promise.race({shiftWait, shiftInterrupted, toShift2}):expect()
+            Promise.race({shiftCompleted, shiftStiffInterrupted, shift2Pressed}):expect()
 
-            linearVelocity:Destroy()
+            sprintEnd()
             
-            if shiftStage == 2 then
+            if shiftStage == 4 then
                 print("技能Shift2触发！")
-                computeSprintDirection()
-                local linearVelocity = self._characterController:applyLinearVelocity(sprintDirection * 150)
+                sprintStart(150)
 
-                local shift2Wait = Promise.delay(0.4)
-                local shift2Interrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
-                    shiftStage = 4
+                -- 情况1：完成移动
+                local shift2Completed = Promise.delay(0.4):andThen(function()
+                    shiftStage = 5
+                end)
+                -- 情况2：被僵直打断
+                local shift2StiffInterrupted = Promise.fromEvent(stiffInterruptedSignal):andThen(function()
+                    shiftStage = 6
                 end)
 
-                Promise.race({shift2Wait, shift2Interrupted}):expect()
+                Promise.race({shift2Completed, shift2StiffInterrupted}):expect()
 
-                linearVelocity:Destroy()
+                sprintEnd()
 
-                if shiftStage == 4 then
-                    print("技能Shift2被打断！")
-                    self._unitOperation.unpause()
-                else
-                    task.wait(0.2)
-                    self._unitOperation.unpause()
+                if shiftStage == 5 then
+                    afterSprint()
                 end
-            elseif shiftStage == 3 then
-                print("技能Shift被打断！")
-                self._unitOperation.unpause()
-            elseif shiftStage == 4 then
-                task.wait(0.2)
-                self._unitOperation.unpause()
+            elseif shiftStage == 2 then
+                afterSprint()
             end
 
-            shiftStage = 0
+            shiftCoolDown()
         elseif shiftStage == 1 then
-            shift2Signal:Fire()
+            shift2PressedSignal:Fire()
         end
     end
 
